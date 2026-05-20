@@ -164,6 +164,26 @@
     ]
   },
   {
+    "type": "set-body-action",
+    "label": "Set message body",
+    "short": "Replace what's inside",
+    "category": "ACTION",
+    "icon": "ti-edit-circle",
+    "glyph": "transform",
+    "explain": "Replaces the message content with new text or a computed value — useful after a timer (empty body) or to build a payload before sending it on.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Set the message body using Simple, Constant, or Groovy",
+    "props": [
+      { "key": "language", "label": "how to set it", "type": "radio", "required": true, "defaultValue": "simple", "options": [
+        { "value": "simple", "title": "Expression", "sub": "Use ${body}, ${header.foo}, etc." },
+        { "value": "constant", "title": "Fixed text", "sub": "Same text every time" },
+        { "value": "groovy", "title": "Groovy script", "sub": "Advanced scripting" }
+      ], "q": "Fixed text or expression?", "help": "Expression is most common — e.g. ${body} keeps the current content, or write a literal for fixed text." },
+      { "key": "expression", "label": "new content", "type": "textarea", "placeholder": "e.g. ${body} or Hello from FlowCamel", "required": true, "defaultValue": "${body}", "q": "What should the message contain?", "help": "For Expression, use ${body} for the incoming message, ${header.name} for headers. For Fixed text, type the exact string." }
+    ]
+  },
+  {
     "type": "split-action",
     "label": "Split Records",
     "short": "Break one message into many",

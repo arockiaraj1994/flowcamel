@@ -10,6 +10,7 @@ export type YamlStep =
   | { filter: { expression: { simple: string } } }
   | { log: { message: string } }
   | { transform: Record<string, string> }
+  | { setBody: Record<string, string> }
   | { split: Record<string, string> }
   | { unmarshal: Record<string, unknown> }
   | { marshal: Record<string, unknown> };

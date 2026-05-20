@@ -36,6 +36,8 @@ function emitEipStep(eipId: string, props: FlowNode['props'], uri: string): stri
       return `            .log("${props['message'] ?? '${body}'}")`;
     case 'transform':
       return `            .transform().${props['language'] ?? 'simple'}("${props['expression'] ?? '${body}'}")`;
+    case 'set-body':
+      return `            .setBody(${props['language'] ?? 'simple'}("${props['expression'] ?? '${body}'}"))`;
     case 'split': {
       const delimiter = props['delimiter'];
       if (delimiter === 'json-array' || delimiter === 'array') {

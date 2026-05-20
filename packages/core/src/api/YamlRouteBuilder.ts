@@ -4,18 +4,15 @@ import type { FlowNode } from '../model/FlowNode.js';
 import { getBlock } from './BlockRegistry.js';
 import { getEipType } from './CatalogRegistry.js';
 import { orderedNodesFromGraph } from './graphOrder.js';
-import type { EndpointDescriptor } from './ComponentUri.js';
-import { buildEndpointDescriptor } from './UriBuilder.js';
+import { buildEndpointUri } from './UriBuilder.js';
 import type { YamlEndpoint, YamlRouteDefinition, YamlStep } from './YamlRouteModel.js';
 
-function toYamlEndpoint(desc: EndpointDescriptor): YamlEndpoint {
-  if (desc.parameters && Object.keys(desc.parameters).length > 0) {
-    return { uri: desc.uri, parameters: desc.parameters };
-  }
-  return { uri: desc.uri };
+/** Full Camel URI in `uri` (required for e.g. `log:loggerName`). */
+function toYamlEndpoint(blockType: string, props: FlowNode['props']): YamlEndpoint {
+  return { uri: buildEndpointUri(blockType, props) };
 }
 
-function emitYamlEipStep(eipId: string, props: FlowNode['props'], endpoint: EndpointDescriptor): YamlStep[] {
+function emitYamlEipStep(eipId: string, blockType: string, props: FlowNode['props']): YamlStep[] {
   switch (eipId) {
     case 'filter':
       return [{ filter: { expression: { simple: props['expression'] ?? 'true' } } }];
@@ -24,6 +21,10 @@ function emitYamlEipStep(eipId: string, props: FlowNode['props'], endpoint: Endp
     case 'transform': {
       const lang = props['language'] ?? 'simple';
       return [{ transform: { [lang]: props['expression'] ?? '${body}' } }];
+    }
+    case 'set-body': {
+      const lang = props['language'] ?? 'simple';
+      return [{ setBody: { [lang]: props['expression'] ?? '${body}' } }];
     }
     case 'split': {
       const delimiter = props['delimiter'];
@@ -48,9 +49,11 @@ function emitYamlEipStep(eipId: string, props: FlowNode['props'], endpoint: Endp
       ];
     }
     case 'to-uri':
-      return [{ to: toYamlEndpoint(endpoint) }];
-    default:
-      return endpoint.uri ? [{ to: toYamlEndpoint(endpoint) }] : [];
+      return [{ to: toYamlEndpoint(blockType, props) }];
+    default: {
+      const uri = buildEndpointUri(blockType, props);
+      return uri ? [{ to: toYamlEndpoint(blockType, props) }] : [];
+    }
   }
 }
 
@@ -58,15 +61,15 @@ function emitYamlStep(node: FlowNode, isFirst: boolean): YamlStep[] {
   const block = getBlock(node.blockType);
   if (!block) return [];
 
-  const endpoint = buildEndpointDescriptor(node.blockType, node.props);
+  const endpointUri = buildEndpointUri(node.blockType, node.props);
 
   if (isFirst) return [];
 
   const eip = getEipType(node.blockType);
-  if (eip) return emitYamlEipStep(eip, node.props, endpoint);
+  if (eip) return emitYamlEipStep(eip, node.blockType, node.props);
 
-  if (block.category === BlockCategory.DESTINATION || endpoint.uri) {
-    return [{ to: toYamlEndpoint(endpoint) }];
+  if (block.category === BlockCategory.DESTINATION || endpointUri) {
+    return [{ to: toYamlEndpoint(node.blockType, node.props) }];
   }
 
   return [];
@@ -77,7 +80,6 @@ export function buildYamlRoute(graph: FlowGraph, routeId = 'flowcamel-route'): Y
   if (ordered.length === 0) return null;
 
   const source = ordered[0]!;
-  const fromEndpoint = buildEndpointDescriptor(source.blockType, source.props);
   const steps: YamlStep[] = [];
 
   for (let i = 1; i < ordered.length; i++) {
@@ -89,7 +91,7 @@ export function buildYamlRoute(graph: FlowGraph, routeId = 'flowcamel-route'): Y
     route: {
       id: routeId,
       from: {
-        ...toYamlEndpoint(fromEndpoint),
+        ...toYamlEndpoint(source.blockType, source.props),
         steps,
       },
     },

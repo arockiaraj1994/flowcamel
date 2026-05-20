@@ -5,8 +5,8 @@ Visual Apache Camel flow builder. Users drag blocks onto a canvas, configure the
 ## Quick start
 
 ```bash
-pnpm install      # also installs Camel JBang for test run when JBang is on PATH
-pnpm dev          # frontend :5173, backend :3001
+pnpm install      # optional Camel JBang for test run
+pnpm dev          # frontend :5173, Quarkus API :8080
 pnpm type-check
 ```
 
@@ -48,7 +48,7 @@ Frontend client: [`packages/app/frontend/src/api/backendClient.ts`](packages/app
 
 **Generated ZIP:** [`graphToYamlRoutes`](packages/core/src/api/RouteYamlEmitter.ts) → `src/main/resources/camel/routes.camel.yaml`; Spring Boot loads via `camel-yaml-dsl-starter`. Includes Maven Wrapper (`mvnw`) and `README.md` with `./mvnw spring-boot:run`. Gated by [`validateForYamlExport`](packages/core/src/api/GraphValidator.ts).
 
-**Test run (dev mode, Karavan-aligned):** `POST /api/test-run` writes `routes.camel.yaml` to a temp dir and runs `camel run` (or `jbang -Dcamel.jbang.version=4.5.0 camel@apache/camel run … --max-messages=5 --logging-level=info`). Camel JBang is installed via `pnpm install` / `pnpm setup:camel` when JBang is available. Response is NDJSON (`yaml`, `log`, `done` events).
+**Test run (dev mode, Karavan-aligned):** `POST /api/test-run` writes `routes.camel.yaml` to a temp dir and runs `camel run` (or `jbang -Dcamel.jbang.version=4.5.0 camel@apache/camel run … --max-messages=5 --logging-level=info`). Camel JBang is installed via `pnpm install` / `pnpm setup:camel` when JBang is available. Response is NDJSON (`yaml`, `log`, `done` events). **Stop:** UI **Stop** button or `POST /api/test-run/stop` kills the process and runs JBang `camel run --stop` (same as Karavan dev mode).
 
 ## Property forms UX (canonical)
 
@@ -105,9 +105,11 @@ Prop field types in catalog: `text`, `number`, `password`, `select`, `chips`, `r
 | Package | Role |
 |---------|------|
 | `@flowcamel/core` | Models, `blocks.json`, BlockRegistry, GraphValidator, GraphSerializer |
-| `@flowcamel/generator` | Handlebars templates → ZIP |
+| `flowcamel-core` (Java) | Graph, validation, YAML export (server) |
+| `flowcamel-generator` (Java) | Spring Boot ZIP + Maven wrapper |
+| `flowcamel-api` (Java) | Quarkus REST + SQLite |
+| `@flowcamel/core` (TS) | Catalog + client validation for designer |
 | `@flowcamel/designer` | React Flow canvas, BlockPanel, PropertyPanel |
-| `backend` | Express + SQLite |
 | `frontend` | Vite SPA |
 
 ## Camel catalog (Maven — same as Karavan)

@@ -13,7 +13,7 @@ Visual builder for [Apache Camel](https://camel.apache.org/) integrations. Desig
 
 - **Node.js** 20+
 - **pnpm** 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
-- **Java 21+** — only needed to run a *generated* project locally (not for the designer itself)
+- **Java 21+** and **Maven** (wrapper included under `java/`) — for the Quarkus API and generated projects
 
 Optional for **test run** in the designer (pick one):
 
@@ -30,12 +30,14 @@ pnpm build
 pnpm dev
 ```
 
-Open **http://localhost:5173** (frontend). API runs on **http://localhost:3001**.
+Open **http://localhost:5173** (frontend). API runs on **http://localhost:8080** (Quarkus).
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Frontend + backend (watch mode) |
-| `pnpm build` | Build core, generator, and frontend |
+| `pnpm dev` | Quarkus API + Vite frontend |
+| `pnpm dev:api` | Quarkus only (`quarkus:dev`) |
+| `pnpm build` | Java backend + TS core + frontend |
+| `pnpm build:java` | Maven install (`java/`) |
 | `pnpm type-check` | TypeScript across packages |
 | `pnpm catalog:sync` | Refresh Camel catalog JSON from Maven |
 | `pnpm setup:camel` | Install Camel via JBang for test run |
@@ -64,15 +66,16 @@ Routes live at `src/main/resources/camel/routes.camel.yaml` and are loaded autom
 
 ```
 flowcamel/
+├── java/                    # Maven multi-module (Quarkus API)
+│   ├── flowcamel-core/      # Graph, validation, YAML export (Java)
+│   ├── flowcamel-generator/ # Spring Boot ZIP generator
+│   └── flowcamel-api/       # REST API (SQLite, test-run, generate)
 ├── packages/
-│   ├── core/           # Flow graph, catalog, YAML/Java route emitters, validation
-│   ├── generator/      # Spring Boot ZIP + Maven wrapper templates
-│   ├── designer/       # React Flow canvas and property UI
-│   └── app/
-│       ├── backend/    # Express API + SQLite
-│       └── frontend/   # Vite SPA
-├── scripts/            # Catalog sync, JBang/Camel setup
-└── docs/               # Catalog parity plan (CATALOG_PLAN.md)
+│   ├── core/                # TS catalog + client-side validation (designer)
+│   ├── designer/            # React Flow canvas and property UI
+│   └── app/frontend/        # Vite SPA
+├── scripts/                 # Catalog sync, JBang/Camel setup
+└── docs/                    # Catalog parity plan (CATALOG_PLAN.md)
 ```
 
 ## API (summary)
@@ -83,6 +86,7 @@ flowcamel/
 | `GET/PUT/DELETE` | `/api/projects/:id` | Load / update / delete |
 | `POST` | `/api/generate` | Download Spring Boot ZIP |
 | `POST` | `/api/test-run` | Stream JBang test run (NDJSON) |
+| `POST` | `/api/test-run/stop` | Stop active test run (JBang `run --stop` / kill process) |
 | `GET` | `/api/catalog/meta` | Catalog version and featured blocks |
 
 See [HANDOVER.md](HANDOVER.md) for full API notes, block list, and contributor guidance.

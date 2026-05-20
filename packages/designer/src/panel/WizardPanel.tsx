@@ -58,6 +58,7 @@ function aiHintFor(block: BlockDefinition): string {
     case 'log-action': return 'Tip: ${body} drops in the message contents; ${header.foo} drops in a header.';
     case 'log-dest': return 'Tip: The full message body is written to the log — check your console or log file.';
     case 'transform-action': return 'Most APIs prefer JSON. If you don\'t know, JSON is a safe default.';
+    case 'set-body-action': return 'After a Timer, try constant text like "tick" or simple "${body}" to pass data through.';
     case 'timer-source': return '5m is a good starting point — easy to test, gentle on systems.';
     default: return 'Press Tab to jump fields, or describe what you want and I\'ll fill it in.';
   }

@@ -4,6 +4,8 @@ dist/
 *.db
 *.db-shm
 *.db-wal
+java/**/target/
+java/flowcamel.db
 .env
 .env.*
 .DS_Store

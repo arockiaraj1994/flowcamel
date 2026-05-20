@@ -19,7 +19,7 @@ import { ConfigModal } from './ConfigModal.js';
 import { GenerateModal } from './GenerateModal.js';
 import { TestRunDrawer } from './TestRunDrawer.js';
 import type { LogEntry } from './TestRunDrawer.js';
-import { getProject, streamTestRun, updateProject } from '../../api/backendClient.js';
+import { getProject, stopTestRun as stopTestRunApi, streamTestRun, updateProject } from '../../api/backendClient.js';
 import { useAppStore } from '../../stores/appStore.js';
 import { syncGraphFromCanvas } from './syncGraphFromCanvas.js';
 
@@ -30,6 +30,7 @@ function deriveSubtitle(blockType: string, props: Record<string, string>): strin
     case 'http-source': return props['path'] || '';
     case 'filter-action': return props['expression'] ? props['expression'].slice(0, 24) : '';
     case 'transform-action': return props['from'] && props['to'] ? `${props['from']} → ${props['to']}` : '';
+    case 'set-body-action': return props['expression'] ? props['expression'].slice(0, 24) : '';
     case 'log-action': return props['level'] ? `${props['level']} level` : '';
     case 'log-dest': return props['loggerName'] ? `logger: ${props['loggerName']}` : '';
     case 'email-dest': return props['to'] || '';
@@ -92,6 +93,7 @@ export function ProjectPage() {
   const [dropActive, setDropActive] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const draggingBlockRef = useRef<BlockDefinition | null>(null);
+  const testRunAbortRef = useRef<AbortController | null>(null);
   draggingBlockRef.current = draggingBlock;
 
   const liveGraph = useMemo(
@@ -103,6 +105,12 @@ export function ProjectPage() {
   const yamlExportValidation = validateForYamlExport(liveGraph);
 
   useEffect(() => {
+    return () => {
+      testRunAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     getProject(id).then((meta) => {
       store.loadGraph(meta.graph);
@@ -110,7 +118,7 @@ export function ProjectPage() {
         meta.graph.nodes.map((n: FlowNode) => ({
           id: n.id,
           type: 'flowNode',
-          position: n.position,
+          position: n.position ?? { x: 0, y: 0 },
           data: nodeData(n, nodeStyle),
         }))
       );
@@ -273,6 +281,7 @@ export function ProjectPage() {
 
     if (/filter|only|pick/.test(lower)) seq.push('filter-action');
     if (/transform|json|xml|convert/.test(lower)) seq.push('transform-action');
+    if (/set body|setbody|replace body|payload/.test(lower)) seq.push('set-body-action');
     if (/split|each|per/.test(lower)) seq.push('split-action');
 
     if (/email|alert|notify|ops/.test(lower)) seq.push('email-dest');
@@ -344,6 +353,26 @@ export function ProjectPage() {
     );
   }
 
+  function openTestRunLogs() {
+    setShowTestRun(true);
+  }
+
+  async function stopTestRun() {
+    if (!id) return;
+    testRunAbortRef.current?.abort();
+    try {
+      await stopTestRunApi(id);
+    } catch {
+      /* stream may already be closed */
+    }
+    setLogs((prev) => [
+      ...prev,
+      { time: ts(), level: 'warn', msg: '[flowcamel] Test run stopped by user.' },
+    ]);
+    setTestRunning(false);
+    applyTestVisuals(null, store.graph.nodes);
+  }
+
   async function startTestRun() {
     if (!id) return;
 
@@ -353,6 +382,10 @@ export function ProjectPage() {
       notify('error', yamlCheck.errors[0] ?? 'Fix validation errors before test run.');
       return;
     }
+
+    testRunAbortRef.current?.abort();
+    const abort = new AbortController();
+    testRunAbortRef.current = abort;
 
     const orderedNodes = orderedNodesFromGraph(graph);
     setShowTestRun(true);
@@ -399,12 +432,18 @@ export function ProjectPage() {
             },
           ]);
         }
-      });
+      }, abort.signal);
     } catch (err) {
+      if (abort.signal.aborted) {
+        return;
+      }
       const msg = err instanceof Error ? err.message : 'Test run failed';
       setLogs((prev) => [...prev, { time: ts(), level: 'err', msg }]);
       notify('error', msg.split('\n')[0] ?? msg);
     } finally {
+      if (testRunAbortRef.current === abort) {
+        testRunAbortRef.current = null;
+      }
       setTestRunning(false);
       applyTestVisuals(null, orderedNodes);
     }
@@ -467,18 +506,37 @@ export function ProjectPage() {
               <i className="ti ti-device-floppy" /> {saving ? 'Saving…' : 'Save'}
             </button>
           )}
-          <button
-            className="btn btn-sm"
-            onClick={startTestRun}
-            disabled={testRunning || !yamlExportValidation.valid}
-            title={
-              !yamlExportValidation.valid
-                ? yamlExportValidation.errors.join('\n')
-                : 'Run generated Camel YAML via JBang (dev mode)'
-            }
-          >
-            <i className="ti ti-player-play" /> {testRunning ? 'Running…' : 'Test run'}
-          </button>
+          {testRunning ? (
+            <>
+              <button
+                className="btn btn-sm test-run-stop"
+                onClick={stopTestRun}
+                title="Stop test run (kills JBang/Docker — same as Karavan Stop)"
+              >
+                <i className="ti ti-player-stop-filled" /> Stop
+              </button>
+              <button
+                className="btn btn-sm"
+                onClick={openTestRunLogs}
+                title="Reopen the log drawer for the current test run"
+              >
+                <i className="ti ti-terminal-2" /> View logs
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn btn-sm"
+              onClick={startTestRun}
+              disabled={!yamlExportValidation.valid}
+              title={
+                !yamlExportValidation.valid
+                  ? yamlExportValidation.errors.join('\n')
+                  : 'Run generated Camel YAML via JBang (dev mode)'
+              }
+            >
+              <i className="ti ti-player-play" /> Test run
+            </button>
+          )}
           <button
             className="btn btn-primary btn-sm"
             onClick={openGenerate}
@@ -510,6 +568,16 @@ export function ProjectPage() {
             dropActive={dropActive}
             canvasRef={canvasRef}
           />
+          {testRunning && !showTestRun && (
+            <button
+              type="button"
+              className="test-run-pill"
+              onClick={openTestRunLogs}
+              title="Show logs for the running test (no new Docker container)"
+            >
+              <i className="ti ti-terminal-2" /> View logs
+            </button>
+          )}
           {showTestRun && (
             <TestRunDrawer
               logs={logs}
@@ -517,9 +585,12 @@ export function ProjectPage() {
               yamlPreview={testRunYaml}
               onClose={() => {
                 setShowTestRun(false);
-                applyTestVisuals(null, store.graph.nodes);
+                if (!testRunning) {
+                  applyTestVisuals(null, store.graph.nodes);
+                }
               }}
               onReplay={startTestRun}
+              onStop={stopTestRun}
             />
           )}
         </Panel>

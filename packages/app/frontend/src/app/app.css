@@ -345,6 +345,46 @@
 .form-grid .full { grid-column: 1 / -1; }
 .form-field { display: flex; flex-direction: column; gap: 4px; }
 
+/* ---- Test run (floating pill when drawer closed during run) ---- */
+.test-run-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--accent-hover);
+  background: var(--color-background-primary);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  animation: slideUpDrawer 0.2s ease-out;
+}
+
+.test-run-pill:hover {
+  background: var(--accent-muted);
+}
+
+/* Karavan-style Stop for dev-mode test run */
+.test-run-stop {
+  color: #fff;
+  background: #b54545;
+  border-color: #b54545;
+}
+
+.test-run-stop:hover {
+  background: #9a3a3a;
+  border-color: #9a3a3a;
+  color: #fff;
+}
+
 /* ---- Test run drawer ---- */
 .drawer {
   position: absolute;

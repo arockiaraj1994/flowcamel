@@ -23,6 +23,8 @@ function stepIdiomFor(block: BlockDefinition, node: FlowNode): string {
       return `Fire every ${p['period'] || '5 minutes'}${p['repeatCount'] ? `, ${p['repeatCount']} times total` : ''}.`;
     case 'transform-action':
       return p['from'] && p['to'] ? `Convert messages from ${p['from']} to ${p['to']}.` : block.explain;
+    case 'set-body-action':
+      return `Set the message body to: "${(p['expression'] || '${body}').slice(0, 48)}".`;
     default:
       return block.explain;
   }

@@ -3,16 +3,19 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm rebuild better-sqlite3 && node scripts/setup-jbang-camel.mjs",
+    "postinstall": "node scripts/setup-jbang-camel.mjs",
     "setup:camel": "node scripts/setup-jbang-camel.mjs",
     "catalog:sync": "node scripts/sync-camel-catalog.mjs",
-    "dev": "concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
-    "build": "pnpm --filter @flowcamel/core build && pnpm --filter @flowcamel/generator build && pnpm --filter frontend build",
+    "dev:api": "cd java && QUARKUS_ANALYTICS_DISABLED=true ./mvnw -pl flowcamel-api quarkus:dev -Ddebug=false -Dquarkus.analytics.disabled=true",
+    "dev": "concurrently -k -n api,web -c blue,green \"pnpm dev:api\" \"pnpm exec wait-on -t 120000 http-get://127.0.0.1:8080/api/health && pnpm --filter frontend dev\"",
+    "build:java": "cd java && ./mvnw -q install -DskipTests",
+    "build": "pnpm build:java && pnpm --filter @flowcamel/core build && pnpm --filter frontend build",
     "lint": "pnpm -r lint",
     "type-check": "pnpm -r type-check"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "wait-on": "^8.0.1",
     "typescript": "^5.4.5",
     "prettier": "^3.2.5",
     "eslint": "^8.57.0"

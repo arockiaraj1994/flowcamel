@@ -13,9 +13,10 @@ interface Props {
   yamlPreview?: string;
   onClose: () => void;
   onReplay: () => void;
+  onStop: () => void;
 }
 
-export function TestRunDrawer({ logs, isRunning, yamlPreview, onClose, onReplay }: Props) {
+export function TestRunDrawer({ logs, isRunning, yamlPreview, onClose, onReplay, onStop }: Props) {
   const [tab, setTab] = useState<'logs' | 'trace' | 'payload'>('logs');
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -52,9 +53,19 @@ export function TestRunDrawer({ logs, isRunning, yamlPreview, onClose, onReplay 
             </div>
           ))}
         </div>
-        <button className="btn btn-sm btn-ghost" onClick={onReplay} disabled={isRunning}>
-          <i className="ti ti-refresh" /> Replay
-        </button>
+        {isRunning ? (
+          <button
+            className="btn btn-sm test-run-stop"
+            onClick={onStop}
+            title="Stop test run (Karavan dev mode — kills JBang/Docker process)"
+          >
+            <i className="ti ti-player-stop-filled" /> Stop
+          </button>
+        ) : (
+          <button className="btn btn-sm btn-ghost" onClick={onReplay}>
+            <i className="ti ti-refresh" /> Replay
+          </button>
+        )}
         <button className="btn btn-icon btn-ghost" onClick={onClose}>
           <i className="ti ti-x" />
         </button>

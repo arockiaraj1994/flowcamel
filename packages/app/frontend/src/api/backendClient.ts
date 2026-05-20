@@ -44,12 +44,14 @@ export type TestRunStreamEvent =
 /** Stream Camel JBang test run (generated routes.camel.yaml). */
 export async function streamTestRun(
   projectId: string,
-  onEvent: (event: TestRunStreamEvent) => void
+  onEvent: (event: TestRunStreamEvent) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await fetch('/api/test-run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ projectId }),
+    signal,
   });
 
   if (!response.ok) {
@@ -84,4 +86,25 @@ export async function streamTestRun(
   if (buffer.trim()) {
     onEvent(JSON.parse(buffer.trim()) as TestRunStreamEvent);
   }
+}
+
+/** Karavan-style Stop — kills the active JBang/Docker process for this project. */
+export async function stopTestRun(projectId: string): Promise<boolean> {
+  const response = await fetch('/api/test-run/stop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!response.ok) {
+    let message = 'Failed to stop test run';
+    try {
+      const body = (await response.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
+  const body = (await response.json()) as { stopped?: boolean };
+  return body.stopped === true;
 }
