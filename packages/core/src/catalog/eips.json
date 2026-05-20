@@ -1,0 +1,9 @@
+[
+  { "type": "filter-action", "label": "Filter", "category": "ACTION", "eipId": "filter" },
+  { "type": "transform-action", "label": "Transform", "category": "ACTION", "eipId": "transform" },
+  { "type": "split-action", "label": "Split Records", "category": "ACTION", "eipId": "split" },
+  { "type": "log-action", "label": "Log / Print", "category": "ACTION", "eipId": "log" },
+  { "type": "rest-call-action", "label": "REST Call", "category": "ACTION", "eipId": "to-uri" },
+  { "type": "xslt-action", "label": "XSLT Transform", "category": "ACTION", "eipId": "to-uri" },
+  { "type": "json-xml-action", "label": "JSON ↔ XML Convert", "category": "ACTION", "eipId": "json-xml" }
+]

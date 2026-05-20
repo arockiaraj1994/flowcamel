@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@flowcamel/designer": ["../../designer/src/index.ts"],
+      "@flowcamel/core": ["../../core/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

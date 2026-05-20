@@ -1,0 +1,20 @@
+{
+  "name": "flowcamel",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "postinstall": "pnpm rebuild better-sqlite3 && node scripts/setup-jbang-camel.mjs",
+    "setup:camel": "node scripts/setup-jbang-camel.mjs",
+    "catalog:sync": "node scripts/sync-camel-catalog.mjs",
+    "dev": "concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
+    "build": "pnpm --filter @flowcamel/core build && pnpm --filter @flowcamel/generator build && pnpm --filter frontend build",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5",
+    "eslint": "^8.57.0"
+  }
+}

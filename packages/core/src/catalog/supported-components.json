@@ -1,0 +1,23 @@
+{
+  "featured": [
+    "sftp-source",
+    "timer-source",
+    "http-source",
+    "file-source",
+    "kafka-source",
+    "jms-source",
+    "filter-action",
+    "transform-action",
+    "split-action",
+    "log-action",
+    "rest-call-action",
+    "xslt-action",
+    "json-xml-action",
+    "email-dest",
+    "log-dest",
+    "db-dest",
+    "kafka-dest",
+    "http-dest",
+    "jms-dest"
+  ]
+}

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: {{projectName}}
+
+camel:
+  springboot:
+    main-run-controller: true
+  main:
+    # Loads src/main/resources/camel/*.camel.yaml (default classpath:camel/ also applies)
+    routes-include-pattern: classpath:camel/**
+
+{{#if config}}
+{{config}}
+{{/if}}
+
+logging:
+  level:
+    org.apache.camel: INFO
+    com.flowcamel: DEBUG

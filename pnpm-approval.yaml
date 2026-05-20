@@ -1,0 +1,5 @@
+approvedPackages:
+  better-sqlite3:
+    description: "SQLite native addon for project metadata"
+  esbuild:
+    description: "Bundler used by Vite"

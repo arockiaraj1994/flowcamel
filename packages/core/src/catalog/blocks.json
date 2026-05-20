@@ -1,0 +1,386 @@
+[
+  {
+    "type": "sftp-source",
+    "scheme": "ftp",
+    "label": "SFTP / FTP",
+    "short": "Get files from a server",
+    "category": "SOURCE",
+    "icon": "ti-server",
+    "glyph": "source",
+    "explain": "SFTP is a way computers share files securely over the internet. We'll log in to a folder and pick up new files as they arrive.",
+    "camelComponent": "camel-ftp-starter",
+    "camelUri": "ftp://{{props.username}}@{{props.host}}:{{props.port}}{{props.folder}}?password={{props.password}}&delay={{props.pollEvery}}&delete=false",
+    "description": "Poll files from an SFTP or FTP server",
+    "props": [
+      { "key": "host", "label": "host", "type": "text", "placeholder": "e.g. files.acme.com", "required": true, "q": "Where are your files?", "help": "The address of the server that holds your files. Looks like a website name." },
+      { "key": "port", "label": "port", "type": "number", "placeholder": "22", "required": true, "defaultValue": 22, "q": "Which door do we use to log in?", "help": "Most SFTP servers use door 22. Use 21 for plain FTP. If unsure, leave it at 22." },
+      { "key": "username", "label": "username", "type": "text", "placeholder": "e.g. raj_user", "required": true, "q": "Who's logging in?", "help": "Your username on the server. Your IT admin will know this." },
+      { "key": "password", "label": "password", "type": "password", "required": true, "placeholder": "••••••••", "q": "What's the password?", "help": "Don't worry — this is stored as a secret reference, never as plain text in the generated code." },
+      { "key": "folder", "label": "remote folder", "type": "text", "placeholder": "/uploads/xml", "required": true, "q": "Which folder should we watch?", "help": "The path to the folder on the server. Folders usually start with a slash, like /home/raj/incoming." },
+      { "key": "pollEvery", "label": "poll every", "type": "chips", "required": false, "options": ["10s", "1m", "5m", "15m", "1h"], "q": "How often should we check for new files?", "help": "We'll peek into the folder on a schedule. More often = faster reactions, but more network traffic." }
+    ]
+  },
+  {
+    "type": "timer-source",
+    "scheme": "timer",
+    "label": "Timer",
+    "short": "Run on a schedule",
+    "category": "SOURCE",
+    "icon": "ti-clock",
+    "glyph": "source",
+    "explain": "A Timer kicks off your flow on a regular beat — every minute, every hour, every Monday at 9am. No external system needed.",
+    "camelComponent": "camel-timer",
+    "camelUri": "timer://tick?period={{props.period}}",
+    "description": "Trigger a flow on a fixed time interval",
+    "props": [
+      { "key": "period", "label": "every", "type": "chips", "required": true, "options": ["1s", "10s", "1m", "5m", "1h", "1d"], "q": "How often should this run?", "help": "Pick a beat. The flow will trigger on this schedule, like an alarm clock." },
+      { "key": "repeatCount", "label": "repeat count", "type": "number", "placeholder": "leave blank for unlimited", "required": false, "q": "How many times? (Leave blank for forever)", "help": "If you want this to run a fixed number of times (e.g. for testing), put a number here." }
+    ]
+  },
+  {
+    "type": "http-source",
+    "scheme": "undertow",
+    "label": "HTTP Endpoint",
+    "short": "Listen for web requests",
+    "category": "SOURCE",
+    "icon": "ti-world",
+    "glyph": "source",
+    "explain": "An HTTP endpoint listens at a web address. When someone POSTs data to it, your flow runs with that data as the message.",
+    "camelComponent": "camel-undertow",
+    "camelUri": "undertow:http://0.0.0.0:{{props.port}}{{props.path}}",
+    "description": "Receive HTTP requests on a given path and port",
+    "props": [
+      { "key": "path", "label": "path", "type": "text", "placeholder": "/orders", "required": true, "q": "What's the web address?", "help": "The path part of the URL, like /orders. Your service will respond at this path." },
+      { "key": "port", "label": "port", "type": "number", "placeholder": "8080", "required": true, "defaultValue": 8080, "q": "Which port number?", "help": "Leave at 8080 unless you have a specific reason to change it." },
+      { "key": "method", "label": "method", "type": "radio", "required": false, "options": [
+        { "value": "POST", "title": "POST", "sub": "Receive new data sent in" },
+        { "value": "GET", "title": "GET", "sub": "Respond when someone asks" }
+      ], "q": "What kind of request?", "help": "POST is for sending in new data. GET is for asking for data back. Most integrations use POST." }
+    ]
+  },
+  {
+    "type": "file-source",
+    "scheme": "file",
+    "label": "File Watcher",
+    "short": "Watch a local folder",
+    "category": "SOURCE",
+    "icon": "ti-file",
+    "glyph": "source",
+    "explain": "Watches a folder on this machine. Any file that lands in it becomes a message and flows through your route.",
+    "camelComponent": "camel-file",
+    "camelUri": "file://{{props.directory}}?include={{props.include}}&delay={{props.delay}}",
+    "description": "Watch a local directory for new files",
+    "props": [
+      { "key": "directory", "label": "folder", "type": "text", "placeholder": "/var/data/in", "required": true, "q": "Which folder should we watch?", "help": "An absolute path on the local machine." },
+      { "key": "recursive", "label": "recursive", "type": "radio", "required": false, "options": [
+        { "value": "yes", "title": "Yes", "sub": "Watch subfolders too" },
+        { "value": "no", "title": "No", "sub": "Just this folder" }
+      ], "q": "Include subfolders too?", "help": "If your files end up in nested folders inside, choose yes." },
+      { "key": "include", "label": "file pattern", "type": "text", "placeholder": ".*\\.xml", "required": false, "q": "Only pick certain files?", "help": "A regex pattern like .*\\.xml means only .xml files. Leave blank for all files." }
+    ]
+  },
+  {
+    "type": "kafka-source",
+    "scheme": "kafka",
+    "label": "Kafka Consumer",
+    "short": "Read from a Kafka topic",
+    "category": "SOURCE",
+    "icon": "ti-brand-kafka",
+    "glyph": "source",
+    "explain": "Kafka is a message highway. A consumer is your subscription to one lane (a topic). You'll receive every message published there.",
+    "camelComponent": "camel-kafka",
+    "camelUri": "kafka:{{props.topic}}?brokers={{props.brokers}}&groupId={{props.groupId}}",
+    "description": "Consume messages from a Kafka topic",
+    "props": [
+      { "key": "topic", "label": "topic", "type": "text", "placeholder": "e.g. orders.created", "required": true, "q": "Which topic do you want to read?", "help": "Topics are like channel names — ask your data team for the right one." },
+      { "key": "brokers", "label": "brokers", "type": "text", "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "A comma-separated list of host:port. Your data team has these." },
+      { "key": "groupId", "label": "consumer group", "type": "text", "placeholder": "flowcamel-orders", "required": true, "q": "What's the consumer group name?", "help": "A label for your subscription. Two services with the same group share the work; different groups each see everything." }
+    ]
+  },
+  {
+    "type": "jms-source",
+    "scheme": "activemq",
+    "label": "JMS / ActiveMQ",
+    "short": "Read from a message queue",
+    "category": "SOURCE",
+    "icon": "ti-messages",
+    "glyph": "source",
+    "explain": "JMS is a standard for message queues. ActiveMQ is a popular system that implements it. You'll receive messages sent to a queue or topic.",
+    "camelComponent": "camel-activemq",
+    "camelUri": "activemq:{{props.destinationType}}:{{props.destination}}",
+    "description": "Consume messages from a JMS queue or topic (ActiveMQ / Artemis)",
+    "props": [
+      { "key": "brokerUrl", "label": "broker URL", "type": "text", "placeholder": "tcp://localhost:61616", "required": true, "q": "Where's the ActiveMQ server?", "help": "The connection URL for the broker. Your infrastructure team will have this." },
+      { "key": "destinationType", "label": "destination type", "type": "radio", "required": true, "options": [
+        { "value": "queue", "title": "Queue", "sub": "One consumer gets each message" },
+        { "value": "topic", "title": "Topic", "sub": "All subscribers get each message" }
+      ], "q": "Queue or topic?", "help": "Queues distribute work; topics broadcast to everyone subscribed." },
+      { "key": "destination", "label": "queue / topic name", "type": "text", "placeholder": "orders.incoming", "required": true, "q": "What's the name?", "help": "The queue or topic name you want to listen on." }
+    ]
+  },
+  {
+    "type": "filter-action",
+    "label": "Filter",
+    "short": "Only keep some messages",
+    "category": "ACTION",
+    "icon": "ti-filter",
+    "glyph": "filter",
+    "explain": "A Filter is a gatekeeper. It checks each message against a rule and only lets through the ones that match.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Let messages through only if a condition is true",
+    "props": [
+      { "key": "field", "label": "check", "type": "radio", "required": true, "options": [
+        { "value": "filename", "title": "The file name", "sub": "Like 'order.xml'" },
+        { "value": "body", "title": "What's inside", "sub": "Look at the contents" },
+        { "value": "header", "title": "A header field", "sub": "Metadata about the message" }
+      ], "q": "What should we check?", "help": "We can check the file name, or look inside the message itself." },
+      { "key": "expression", "label": "rule", "type": "text", "placeholder": "e.g. *.xml or 'amount > 1000'", "required": true, "q": "What's the rule?", "help": "Examples: *.xml means anything ending in .xml. Or write plain English and we'll translate it." }
+    ]
+  },
+  {
+    "type": "transform-action",
+    "label": "Transform",
+    "short": "Reshape the message",
+    "category": "ACTION",
+    "icon": "ti-transform",
+    "glyph": "transform",
+    "explain": "Reshapes your message from one format into another — like translating a letter from Spanish to English.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Change the message body using a Simple or Groovy expression",
+    "props": [
+      { "key": "from", "label": "from", "type": "radio", "required": true, "options": [
+        { "value": "XML", "title": "XML", "sub": "Tag-based, like <order>...</order>" },
+        { "value": "JSON", "title": "JSON", "sub": "Curly braces, like {\"order\":...}" },
+        { "value": "CSV", "title": "CSV", "sub": "Comma-separated rows" }
+      ], "q": "What's the message right now?", "help": "What format does the data come in as?" },
+      { "key": "to", "label": "to", "type": "radio", "required": true, "options": [
+        { "value": "JSON", "title": "JSON", "sub": "Most modern APIs" },
+        { "value": "XML", "title": "XML", "sub": "Legacy systems" },
+        { "value": "CSV", "title": "CSV", "sub": "Spreadsheets" }
+      ], "q": "What should it become?", "help": "Pick the format your destination expects." },
+      { "key": "expression", "label": "expression (advanced)", "type": "text", "placeholder": "${body.toUpperCase()}", "required": false, "q": "Custom expression? (optional)", "help": "Leave blank if the from/to selection above is enough. For advanced cases, write a Camel Simple expression." }
+    ]
+  },
+  {
+    "type": "split-action",
+    "label": "Split Records",
+    "short": "Break one message into many",
+    "category": "ACTION",
+    "icon": "ti-layout-rows",
+    "glyph": "split",
+    "explain": "Takes a message that contains many items (like a list of orders) and splits it into one message per item — so the rest of the flow runs once per item.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Split the message into multiple parts",
+    "props": [
+      { "key": "delimiter", "label": "split by", "type": "radio", "required": true, "options": [
+        { "value": "newline", "title": "One per line", "sub": "Each row on its own line" },
+        { "value": "array", "title": "JSON array", "sub": "Items inside [ ... ]" },
+        { "value": "xml", "title": "Repeated XML tag", "sub": "Like <item>...</item>×n" }
+      ], "q": "How are the items separated?", "help": "Pick the pattern that matches your data." }
+    ]
+  },
+  {
+    "type": "log-action",
+    "label": "Log / Print",
+    "short": "Write to logs",
+    "category": "ACTION",
+    "icon": "ti-terminal",
+    "glyph": "log",
+    "explain": "Writes a line to the service's log file. Use this anywhere to see what's happening — it's the most reliable debugger you have.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Print the message or a custom text to the application log",
+    "props": [
+      { "key": "level", "label": "level", "type": "radio", "required": false, "options": [
+        { "value": "INFO", "title": "INFO", "sub": "Normal operation — keep this around" },
+        { "value": "WARN", "title": "WARN", "sub": "Something looks off" },
+        { "value": "ERROR", "title": "ERROR", "sub": "Something broke" },
+        { "value": "DEBUG", "title": "DEBUG", "sub": "Just for developers" }
+      ], "defaultValue": "INFO", "q": "How important is this message?", "help": "Higher levels show up in production by default; DEBUG is hidden unless you turn it on." },
+      { "key": "message", "label": "message", "type": "textarea", "placeholder": "e.g. Order received: ${body}", "required": true, "q": "What should we print?", "help": "Type a sentence. Use ${body} to drop in the message content, or ${header.foo} for headers." }
+    ]
+  },
+  {
+    "type": "rest-call-action",
+    "scheme": "http",
+    "label": "REST Call",
+    "short": "Call another API",
+    "category": "ACTION",
+    "icon": "ti-api",
+    "glyph": "router",
+    "explain": "Makes a web request to another system in the middle of your flow — useful when you need to enrich data or notify an external service.",
+    "camelComponent": "camel-http",
+    "camelUri": "http://{{props.url}}?httpMethod={{props.method}}",
+    "description": "Call an external REST API with configurable method, headers, and query params",
+    "props": [
+      { "key": "url", "label": "URL", "type": "text", "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Include the https:// part." },
+      { "key": "method", "label": "method", "type": "radio", "required": true, "options": [
+        { "value": "POST", "title": "POST", "sub": "Send new data" },
+        { "value": "PUT", "title": "PUT", "sub": "Update existing data" },
+        { "value": "GET", "title": "GET", "sub": "Just read data" }
+      ], "q": "What kind of call?", "help": "POST creates, PUT updates, GET reads." },
+      { "key": "headers", "label": "headers (JSON)", "type": "text", "placeholder": "{\"Authorization\": \"Bearer token\"}", "required": false, "q": "Any headers? (optional)", "help": "Leave blank for no headers. Format: {\"Header-Name\": \"value\"}" }
+    ]
+  },
+  {
+    "type": "xslt-action",
+    "scheme": "xslt",
+    "label": "XSLT Transform",
+    "short": "Apply an XSLT stylesheet",
+    "category": "ACTION",
+    "icon": "ti-code",
+    "glyph": "transform",
+    "explain": "XSLT is a language for transforming XML. If someone hands you an .xsl file, this block applies it to every message that passes through.",
+    "camelComponent": "camel-xslt",
+    "camelUri": "xslt://{{props.stylesheetPath}}",
+    "description": "Apply an XSLT stylesheet to transform XML messages",
+    "props": [
+      { "key": "stylesheetPath", "label": "stylesheet path", "type": "text", "placeholder": "classpath:transform.xsl", "required": true, "q": "Where's the XSLT file?", "help": "Usually a classpath reference like classpath:transform.xsl — put the file in src/main/resources." }
+    ]
+  },
+  {
+    "type": "json-xml-action",
+    "scheme": "jacksonxml",
+    "label": "JSON ↔ XML Convert",
+    "short": "Convert between JSON and XML",
+    "category": "ACTION",
+    "icon": "ti-arrows-exchange",
+    "glyph": "transform",
+    "explain": "Automatically converts the message body between JSON and XML. Useful when your source speaks JSON but your destination wants XML, or vice versa.",
+    "camelComponent": "camel-jacksonxml",
+    "camelUri": "",
+    "description": "Convert message body between JSON and XML formats",
+    "props": [
+      { "key": "direction", "label": "direction", "type": "radio", "required": true, "options": [
+        { "value": "json-to-xml", "title": "JSON → XML", "sub": "Convert JSON body to XML" },
+        { "value": "xml-to-json", "title": "XML → JSON", "sub": "Convert XML body to JSON" }
+      ], "q": "Which way are we converting?", "help": "JSON is curly-brace format. XML is tag-based." }
+    ]
+  },
+  {
+    "type": "email-dest",
+    "scheme": "smtp",
+    "label": "Send Email",
+    "short": "Email out the message",
+    "category": "DESTINATION",
+    "icon": "ti-mail",
+    "glyph": "destination",
+    "explain": "Sends an email. Good for alerts to humans — not for high-volume data movement.",
+    "camelComponent": "camel-mail",
+    "camelUri": "smtp://{{props.host}}:{{props.port}}?username={{props.username}}&password={{props.password}}&to={{props.to}}&subject={{props.subject}}",
+    "description": "Send the message body as an email",
+    "props": [
+      { "key": "to", "label": "to", "type": "text", "placeholder": "ops@acme.com", "required": true, "q": "Who gets the email?", "help": "An email address. You can use commas for multiple people." },
+      { "key": "subject", "label": "subject", "type": "text", "placeholder": "New order received: ${header.orderId}", "required": true, "q": "What's the subject line?", "help": "You can include parts of the message with ${body} or ${header.name}." },
+      { "key": "host", "label": "SMTP host", "type": "text", "placeholder": "smtp.gmail.com", "required": true, "q": "Which email server?", "help": "Your SMTP server address. Gmail is smtp.gmail.com, Outlook is smtp.office365.com." },
+      { "key": "port", "label": "SMTP port", "type": "number", "placeholder": "587", "required": true, "defaultValue": 587, "q": "Which port?", "help": "587 for TLS (recommended), 465 for SSL, 25 for plain (not recommended)." },
+      { "key": "username", "label": "username", "type": "text", "required": true, "q": "Your email address?", "help": "Used to authenticate with the mail server." },
+      { "key": "password", "label": "password", "type": "password", "required": true, "q": "Email password or app password?", "help": "Stored as a secret. For Gmail, use an App Password, not your main password." }
+    ]
+  },
+  {
+    "type": "db-dest",
+    "scheme": "jdbc",
+    "label": "Save to DB",
+    "short": "Write to a database",
+    "category": "DESTINATION",
+    "icon": "ti-database",
+    "glyph": "destination",
+    "explain": "Saves the message into a row in a database table. We assume the message is already shaped right (use a Transform first if not).",
+    "camelComponent": "camel-jdbc",
+    "camelUri": "jdbc:dataSource?query={{props.query}}",
+    "description": "Execute a SQL statement with the message body as input",
+    "props": [
+      { "key": "table", "label": "table", "type": "text", "placeholder": "orders", "required": true, "q": "Which table?", "help": "The table to write into." },
+      { "key": "mode", "label": "mode", "type": "radio", "required": true, "options": [
+        { "value": "insert", "title": "Insert", "sub": "Always create a new row" },
+        { "value": "upsert", "title": "Upsert", "sub": "Update if exists, else insert" }
+      ], "q": "Insert or update?", "help": "Insert always adds a new row. Upsert updates if it exists, inserts if not." },
+      { "key": "jdbcUrl", "label": "JDBC URL", "type": "text", "placeholder": "jdbc:postgresql://localhost:5432/mydb", "required": true, "q": "What's the database URL?", "help": "Your database connection string. Starts with jdbc:postgresql:// for Postgres or jdbc:mysql:// for MySQL." }
+    ]
+  },
+  {
+    "type": "kafka-dest",
+    "scheme": "kafka",
+    "label": "Kafka Topic",
+    "short": "Publish to a Kafka topic",
+    "category": "DESTINATION",
+    "icon": "ti-brand-kafka",
+    "glyph": "destination",
+    "explain": "Publishes the message onto a Kafka topic, where any number of other services can pick it up.",
+    "camelComponent": "camel-kafka",
+    "camelUri": "kafka:{{props.topic}}?brokers={{props.brokers}}",
+    "description": "Publish messages to a Kafka topic",
+    "props": [
+      { "key": "topic", "label": "topic", "type": "text", "placeholder": "orders.processed", "required": true, "q": "Which topic should we publish to?", "help": "Topics are like channel names." },
+      { "key": "brokers", "label": "brokers", "type": "text", "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "host:port pairs separated by commas." }
+    ]
+  },
+  {
+    "type": "http-dest",
+    "scheme": "http",
+    "label": "HTTP Call",
+    "short": "Call another API",
+    "category": "DESTINATION",
+    "icon": "ti-world",
+    "glyph": "destination",
+    "explain": "Makes a web request to another system — like calling a Stripe webhook or a partner's API.",
+    "camelComponent": "camel-http",
+    "camelUri": "http://{{props.url}}",
+    "description": "POST the message body to an HTTP endpoint",
+    "props": [
+      { "key": "url", "label": "url", "type": "text", "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Include the https:// part." },
+      { "key": "method", "label": "method", "type": "radio", "required": true, "options": [
+        { "value": "POST", "title": "POST", "sub": "Send new data" },
+        { "value": "PUT", "title": "PUT", "sub": "Update existing data" },
+        { "value": "GET", "title": "GET", "sub": "Just read data" }
+      ], "q": "What kind of call?", "help": "POST creates, PUT updates, GET reads." }
+    ]
+  },
+  {
+    "type": "log-dest",
+    "scheme": "log",
+    "label": "Logger",
+    "short": "Write to application log",
+    "category": "DESTINATION",
+    "icon": "ti-terminal-2",
+    "glyph": "destination",
+    "explain": "Sends the message to your application's log (the same place Spring Boot prints startup lines). Use this as a simple sink to verify a flow or debug payloads.",
+    "camelComponent": "camel-log",
+    "camelUri": "log:{{props.loggerName}}?level={{props.level}}",
+    "description": "Log the message body to a named logger",
+    "props": [
+      { "key": "loggerName", "label": "logger name", "type": "text", "placeholder": "flowcamel", "required": true, "defaultValue": "flowcamel", "q": "What should we call this logger?", "help": "Shows up in log output so you can filter lines, e.g. flowcamel or orders.pipeline." },
+      { "key": "level", "label": "level", "type": "radio", "required": false, "options": [
+        { "value": "INFO", "title": "INFO", "sub": "Normal operation" },
+        { "value": "WARN", "title": "WARN", "sub": "Something looks off" },
+        { "value": "ERROR", "title": "ERROR", "sub": "Something broke" },
+        { "value": "DEBUG", "title": "DEBUG", "sub": "Verbose developer detail" }
+      ], "defaultValue": "INFO", "q": "How important is this log line?", "help": "INFO is typical for completed steps; use DEBUG while building the flow." }
+    ]
+  },
+  {
+    "type": "jms-dest",
+    "scheme": "activemq",
+    "label": "JMS / ActiveMQ Producer",
+    "short": "Send to a message queue",
+    "category": "DESTINATION",
+    "icon": "ti-messages",
+    "glyph": "destination",
+    "explain": "Sends the message to a JMS queue or topic. The mirror image of the JMS source.",
+    "camelComponent": "camel-activemq",
+    "camelUri": "activemq:{{props.destinationType}}:{{props.destination}}",
+    "description": "Send messages to a JMS queue or topic (ActiveMQ / Artemis)",
+    "props": [
+      { "key": "brokerUrl", "label": "broker URL", "type": "text", "placeholder": "tcp://localhost:61616", "required": true, "q": "Where's the ActiveMQ server?", "help": "The connection URL for the broker." },
+      { "key": "destinationType", "label": "destination type", "type": "radio", "required": true, "options": [
+        { "value": "queue", "title": "Queue", "sub": "One consumer gets each message" },
+        { "value": "topic", "title": "Topic", "sub": "All subscribers get each message" }
+      ], "q": "Queue or topic?", "help": "Queues distribute work; topics broadcast to everyone subscribed." },
+      { "key": "destination", "label": "queue / topic name", "type": "text", "placeholder": "orders.processed", "required": true, "q": "What's the name?", "help": "The queue or topic name to send to." }
+    ]
+  }
+]

@@ -1,0 +1,17 @@
+node_modules/
+.cache/
+dist/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+.DS_Store
+*.local
+.turbo/
+coverage/
+*.log
+.idea/
+.vscode/
+!.vscode/extensions.json
+.jbang/

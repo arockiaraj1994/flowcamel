@@ -1,0 +1,13 @@
+package com.flowcamel.{{packageName}};
+
+import org.apache.camel.builder.RouteBuilder;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GeneratedRouteBuilder extends RouteBuilder {
+
+    @Override
+    public void configure() throws Exception {
+        {{routeDsl}}
+    }
+}
