@@ -4,6 +4,7 @@ import './panel/panel.css';
 export { FlowCanvas } from './canvas/FlowCanvas.js';
 export type { FlowCanvasCoords } from './canvas/FlowCanvas.js';
 export { ConnectionBlockPicker } from './canvas/ConnectionBlockPicker.js';
+export { flowPositionAtScreen, FLOW_NODE_WIDTH, FLOW_NODE_HEIGHT } from './canvas/SidebarDropHandler.js';
 export { FlowNodeComponent } from './canvas/FlowNode.js';
 export { FlowEdgeComponent } from './canvas/FlowEdge.js';
 export { BlockPanel } from './panel/BlockPanel.js';

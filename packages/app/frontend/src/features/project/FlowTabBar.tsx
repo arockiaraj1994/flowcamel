@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FlowDefinition } from '@flowcamel/core';
+import { ConfirmDialog } from '../../shared/ConfirmDialog.js';
 
 export interface FlowTarget {
   routeId: string;
@@ -19,6 +20,7 @@ interface Props {
 export function FlowTabBar({ flows, activeFlowId, onSelect, onAdd, onRename, onDelete }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<FlowDefinition | null>(null);
 
   function startRename(flow: FlowDefinition) {
     setEditingId(flow.id);
@@ -69,9 +71,7 @@ export function FlowTabBar({ flows, activeFlowId, onSelect, onAdd, onRename, onD
                 aria-label={`Delete ${flow.name}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Delete "${flow.name}" and all its blocks?`)) {
-                    onDelete(flow.id);
-                  }
+                  setDeleteTarget(flow);
                 }}
               >
                 <i className="ti ti-x" />
@@ -83,6 +83,21 @@ export function FlowTabBar({ flows, activeFlowId, onSelect, onAdd, onRename, onD
           <i className="ti ti-plus" />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete flow?"
+        message={
+          deleteTarget
+            ? `Delete "${deleteTarget.name}" and all its blocks? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete flow"
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) onDelete(deleteTarget.id);
+        }}
+      />
     </div>
   );
 }

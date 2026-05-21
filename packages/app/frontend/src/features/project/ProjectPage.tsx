@@ -16,7 +16,6 @@ import {
   BlockPanel,
   PropertyPanel,
   ConnectionBlockPicker,
-  type FlowCanvasCoords,
 } from '@flowcamel/designer';
 import type { BlockDefinition, FlowDefinition, FlowEdge, FlowGraph, FlowNode } from '@flowcamel/core';
 import {
@@ -80,25 +79,7 @@ function nodeData(
   };
 }
 
-const NODE_WIDTH = 168;
-const NODE_HEIGHT = 86;
 const SUCCESSOR_OFFSET_X = 220;
-
-function flowPositionFromScreen(
-  api: FlowCanvasCoords | null,
-  clientX: number,
-  clientY: number,
-  rect: DOMRect
-): { x: number; y: number } {
-  const flowPos = api?.screenToFlowPosition({ x: clientX, y: clientY }) ?? {
-    x: clientX - rect.left - NODE_WIDTH / 2,
-    y: clientY - rect.top - NODE_HEIGHT / 2,
-  };
-  return {
-    x: Math.max(0, flowPos.x - NODE_WIDTH / 2),
-    y: Math.max(0, flowPos.y - NODE_HEIGHT / 2),
-  };
-}
 
 function ts(): string {
   const d = new Date();
@@ -133,7 +114,6 @@ export function ProjectPage() {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const flowCoordsRef = useRef<FlowCanvasCoords | null>(null);
   const draggingBlockRef = useRef<BlockDefinition | null>(null);
   const testRunAbortRef = useRef<AbortController | null>(null);
   draggingBlockRef.current = draggingBlock;
@@ -221,6 +201,29 @@ export function ProjectPage() {
     [onNodesChange, store]
   );
 
+  const handleSidebarDrop = useCallback(
+    (blockType: string, position: { x: number; y: number }) => {
+      const newNode = store.addNode(blockType, position);
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: newNode.id,
+          type: 'flowNode',
+          position,
+          data: nodeData(newNode, nodeStyle),
+        },
+      ]);
+      store.setSelectedNode(newNode.id);
+    },
+    [nodeStyle, setNodes, store]
+  );
+
+  const handleSidebarDragEnd = useCallback(() => {
+    setDraggingBlock(null);
+    setGhost(null);
+    setDropActive(false);
+  }, []);
+
   useEffect(() => {
     if (!draggingBlock) return;
     const move = (e: MouseEvent) => {
@@ -235,52 +238,9 @@ export function ProjectPage() {
         setDropActive(over);
       }
     };
-    const up = (e: MouseEvent) => {
-      const block = draggingBlockRef.current;
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (
-        block &&
-        rect &&
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom
-      ) {
-        const position = flowPositionFromScreen(
-          flowCoordsRef.current,
-          e.clientX,
-          e.clientY,
-          rect
-        );
-        const newNode = store.addNode(block.type, position);
-        setNodes((nds) => [
-          ...nds,
-          {
-            id: newNode.id,
-            type: 'flowNode',
-            position,
-            data: nodeData(newNode, nodeStyle),
-          },
-        ]);
-        store.setSelectedNode(newNode.id);
-        canvasRef.current?.focus();
-        flowCoordsRef.current?.fitView({
-          nodes: [{ id: newNode.id }],
-          padding: 0.4,
-          duration: 200,
-        });
-      }
-      setDraggingBlock(null);
-      setGhost(null);
-      setDropActive(false);
-    };
     window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    return () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-    };
-  }, [draggingBlock, nodeStyle, setNodes, store]);
+    return () => window.removeEventListener('mousemove', move);
+  }, [draggingBlock]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -362,12 +322,6 @@ export function ProjectPage() {
       );
       store.setSelectedNode(newNode.id);
       setConnectionPicker(null);
-      canvasRef.current?.focus();
-      flowCoordsRef.current?.fitView({
-        nodes: [{ id: newNode.id }],
-        padding: 0.4,
-        duration: 200,
-      });
     },
     [connectionPicker, nodes, nodeStyle, setNodes, setEdges, store]
   );
@@ -743,9 +697,10 @@ export function ProjectPage() {
             onConnect={onConnect}
             onConnectEnd={onConnectEnd}
             isValidConnection={isValidConnection}
-            onCoordsReady={(api) => {
-              flowCoordsRef.current = api;
-            }}
+            flowKey={activeFlowId ?? undefined}
+            draggingBlockType={draggingBlock?.type ?? null}
+            onSidebarDrop={handleSidebarDrop}
+            onSidebarDragEnd={handleSidebarDragEnd}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
             dropActive={dropActive}
