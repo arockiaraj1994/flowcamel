@@ -19,6 +19,8 @@ export interface PropSchema {
   q?: string;
   /** Helper sentence below the question */
   help?: string;
+  /** When true, block wizard/config can bind this field to Application properties. */
+  linkable?: boolean;
 }
 
 export interface BlockDefinition {

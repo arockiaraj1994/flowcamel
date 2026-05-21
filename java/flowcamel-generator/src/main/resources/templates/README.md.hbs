@@ -13,13 +13,33 @@ chmod +x mvnw   # Unix/macOS only, first time
 ./mvnw spring-boot:run
 ```
 
+{{#if devProfile}}
+With a Spring profile (overrides in `application-{{devProfile}}.yml`):
+
+```bash
+SPRING_PROFILES_ACTIVE={{devProfile}} ./mvnw spring-boot:run
+```
+{{/if}}
+
 On Windows:
 
 ```cmd
 mvnw.cmd spring-boot:run
 ```
 
-The app loads routes from `src/main/resources/camel/routes.camel.yaml`.
+The app loads routes from `src/main/resources/camel/routes.camel.yaml` (one YAML file may contain **multiple** `route` entries — one per flow designed in FlowCamel).
+
+Routes in the same project can call each other with Camel `direct:{routeId}` when you add a **Call flow** step in the designer.
+
+## Application properties
+
+Connection settings and secrets are in `src/main/resources/application.yml`. Values marked as secrets in FlowCamel are exported as `${property.key}` placeholders — provide real values via environment, `.env`, or your secret store at runtime.
+
+{{#if hasVault}}
+### Secrets ({{vaultProvider}})
+
+This project is wired for **{{vaultProvider}}** via `spring.config.import` in `application.yml`. Configure IAM / managed identity and map secret JSON keys to the property paths in `application.yml` (e.g. `sftp.password`).
+{{/if}}
 
 ## Build
 
@@ -46,4 +66,7 @@ Then run the application as above.
 | `mvnw` / `mvnw.cmd` | Maven Wrapper (no global Maven install required) |
 | `src/main/resources/camel/routes.camel.yaml` | Camel YAML DSL routes |
 | `src/main/resources/application.yml` | Spring Boot / Camel configuration |
+{{#each exportProfiles}}
+| `src/main/resources/application-{{this}}.yml` | Profile overrides for **{{this}}** |
+{{/each}}
 | `docker-compose.yml` | Local Kafka / ActiveMQ (when used by the flow) |

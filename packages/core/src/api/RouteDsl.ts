@@ -38,6 +38,10 @@ function emitEipStep(eipId: string, props: FlowNode['props'], uri: string): stri
       return `            .transform().${props['language'] ?? 'simple'}("${props['expression'] ?? '${body}'}")`;
     case 'set-body':
       return `            .setBody(${props['language'] ?? 'simple'}("${props['expression'] ?? '${body}'}"))`;
+    case 'call-flow': {
+      const target = props['targetRouteId']?.trim();
+      return target ? `            .to("direct:${target}")` : `// Call flow: missing targetRouteId`;
+    }
     case 'split': {
       const delimiter = props['delimiter'];
       if (delimiter === 'json-array' || delimiter === 'array') {

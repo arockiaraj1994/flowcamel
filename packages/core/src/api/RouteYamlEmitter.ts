@@ -1,14 +1,13 @@
 import yaml from 'js-yaml';
 import type { FlowGraph } from '../model/FlowGraph.js';
-import { buildYamlRoute } from './YamlRouteBuilder.js';
+import { buildAllYamlRoutes } from './YamlRouteBuilder.js';
 
 /** Emit plain Camel YAML DSL (array of routes) for `kamel run *.camel.yaml`. */
 export function graphToYamlRoutes(graph: FlowGraph): string {
-  const route = buildYamlRoute(graph);
-  if (!route) return '[]\n';
+  const routes = buildAllYamlRoutes(graph);
+  if (routes.length === 0) return '[]\n';
 
-  const doc = [route];
-  return yaml.dump(doc, {
+  return yaml.dump(routes, {
     lineWidth: 120,
     noRefs: true,
     quotingType: '"',

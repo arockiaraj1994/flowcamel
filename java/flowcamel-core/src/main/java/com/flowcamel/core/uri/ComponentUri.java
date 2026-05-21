@@ -1,6 +1,7 @@
 package com.flowcamel.core.uri;
 
 import com.flowcamel.core.catalog.CamelCatalogProperty;
+import com.flowcamel.core.config.ConfigRefs;
 import com.flowcamel.core.catalog.CatalogComponentEntry;
 import com.flowcamel.core.model.EndpointDescriptor;
 import com.flowcamel.core.properties.ComponentProperties;
@@ -134,8 +135,8 @@ public final class ComponentUri {
     StringBuilder uri = new StringBuilder(parts.getFirst());
     for (int i = 1; i < parts.size(); i++) {
       String param = parts.get(i);
-      String val = props.get(param);
-      if (val == null || val.isEmpty()) return "";
+      String val = ConfigRefs.resolvePropForEmit(props.get(param));
+      if (val.isEmpty()) return "";
       uri.append(separators.get(i - 1)).append(val);
     }
     return appendQuery(uri.toString(), props, ComponentProperties.getComponentProperties(scheme, role), pathNames);
@@ -158,8 +159,8 @@ public final class ComponentUri {
     List<String> params = new ArrayList<>();
     for (CamelCatalogProperty p : catalogProps) {
       if (pathNames.contains(p.name) || "path".equals(p.kind)) continue;
-      String val = props.get(p.name);
-      if (val == null || val.isEmpty()) continue;
+      String val = ConfigRefs.resolvePropForEmit(props.get(p.name));
+      if (val.isEmpty()) continue;
       params.add(p.name + "=" + java.net.URLEncoder.encode(val, StandardCharsets.UTF_8));
     }
     if (params.isEmpty()) return uri;

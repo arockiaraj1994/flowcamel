@@ -12,11 +12,11 @@
     "camelUri": "ftp://{{props.username}}@{{props.host}}:{{props.port}}{{props.folder}}?password={{props.password}}&delay={{props.pollEvery}}&delete=false",
     "description": "Poll files from an SFTP or FTP server",
     "props": [
-      { "key": "host", "label": "host", "type": "text", "placeholder": "e.g. files.acme.com", "required": true, "q": "Where are your files?", "help": "The address of the server that holds your files. Looks like a website name." },
-      { "key": "port", "label": "port", "type": "number", "placeholder": "22", "required": true, "defaultValue": 22, "q": "Which door do we use to log in?", "help": "Most SFTP servers use door 22. Use 21 for plain FTP. If unsure, leave it at 22." },
-      { "key": "username", "label": "username", "type": "text", "placeholder": "e.g. raj_user", "required": true, "q": "Who's logging in?", "help": "Your username on the server. Your IT admin will know this." },
-      { "key": "password", "label": "password", "type": "password", "required": true, "placeholder": "••••••••", "q": "What's the password?", "help": "Don't worry — this is stored as a secret reference, never as plain text in the generated code." },
-      { "key": "folder", "label": "remote folder", "type": "text", "placeholder": "/uploads/xml", "required": true, "q": "Which folder should we watch?", "help": "The path to the folder on the server. Folders usually start with a slash, like /home/raj/incoming." },
+      { "key": "host", "label": "host", "type": "text", "linkable": true, "placeholder": "e.g. files.acme.com", "required": true, "q": "Where are your files?", "help": "Literal value, or link to App config (e.g. sftp.host) so dev/prod overrides apply at export." },
+      { "key": "port", "label": "port", "type": "number", "linkable": true, "placeholder": "22", "required": true, "defaultValue": 22, "q": "Which door do we use to log in?", "help": "Most SFTP servers use 22. Can link to sftp.port in App config." },
+      { "key": "username", "label": "username", "type": "text", "linkable": true, "placeholder": "e.g. raj_user", "required": true, "q": "Who's logging in?", "help": "Literal or Application property (sftp.username)." },
+      { "key": "password", "label": "password", "type": "password", "linkable": true, "required": true, "placeholder": "••••••••", "q": "What's the password?", "help": "Literal for local test, or link to sftp.password in App config (exported as a placeholder when marked secret)." },
+      { "key": "folder", "label": "remote folder", "type": "text", "linkable": true, "placeholder": "/uploads/xml", "required": true, "q": "Which folder should we watch?", "help": "Path on the server. Can link to sftp.folder in App config." },
       { "key": "pollEvery", "label": "poll every", "type": "chips", "required": false, "options": ["10s", "1m", "5m", "15m", "1h"], "q": "How often should we check for new files?", "help": "We'll peek into the folder on a schedule. More often = faster reactions, but more network traffic." }
     ]
   },
@@ -92,8 +92,8 @@
     "camelUri": "kafka:{{props.topic}}?brokers={{props.brokers}}&groupId={{props.groupId}}",
     "description": "Consume messages from a Kafka topic",
     "props": [
-      { "key": "topic", "label": "topic", "type": "text", "placeholder": "e.g. orders.created", "required": true, "q": "Which topic do you want to read?", "help": "Topics are like channel names — ask your data team for the right one." },
-      { "key": "brokers", "label": "brokers", "type": "text", "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "A comma-separated list of host:port. Your data team has these." },
+      { "key": "topic", "label": "topic", "type": "text", "linkable": true, "placeholder": "e.g. orders.created", "required": true, "q": "Which topic do you want to read?", "help": "Literal or kafka.topic in App config." },
+      { "key": "brokers", "label": "brokers", "type": "text", "linkable": true, "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "Literal or kafka.brokers in App config." },
       { "key": "groupId", "label": "consumer group", "type": "text", "placeholder": "flowcamel-orders", "required": true, "q": "What's the consumer group name?", "help": "A label for your subscription. Two services with the same group share the work; different groups each see everything." }
     ]
   },
@@ -161,6 +161,21 @@
         { "value": "CSV", "title": "CSV", "sub": "Spreadsheets" }
       ], "q": "What should it become?", "help": "Pick the format your destination expects." },
       { "key": "expression", "label": "expression (advanced)", "type": "text", "placeholder": "${body.toUpperCase()}", "required": false, "q": "Custom expression? (optional)", "help": "Leave blank if the from/to selection above is enough. For advanced cases, write a Camel Simple expression." }
+    ]
+  },
+  {
+    "type": "call-flow-action",
+    "label": "Call flow",
+    "short": "Invoke another route",
+    "category": "ACTION",
+    "icon": "ti-arrows-right-left",
+    "glyph": "router",
+    "explain": "Hands the message to another flow in this project using Camel direct: — same Spring Boot app, in-memory handoff to that route's consumer.",
+    "camelComponent": "camel-core",
+    "camelUri": "",
+    "description": "Call another flow route via direct:",
+    "props": [
+      { "key": "targetRouteId", "label": "target flow", "type": "text", "required": true, "q": "Which flow should run next?", "help": "Pick another flow tab. At runtime this becomes direct:{routeId} in the generated YAML." }
     ]
   },
   {
@@ -236,7 +251,7 @@
     "camelUri": "http://{{props.url}}?httpMethod={{props.method}}",
     "description": "Call an external REST API with configurable method, headers, and query params",
     "props": [
-      { "key": "url", "label": "URL", "type": "text", "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Include the https:// part." },
+      { "key": "url", "label": "URL", "type": "text", "linkable": true, "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Literal or link via App config (e.g. http.url)." },
       { "key": "method", "label": "method", "type": "radio", "required": true, "options": [
         { "value": "POST", "title": "POST", "sub": "Send new data" },
         { "value": "PUT", "title": "PUT", "sub": "Update existing data" },
@@ -295,10 +310,10 @@
     "props": [
       { "key": "to", "label": "to", "type": "text", "placeholder": "ops@acme.com", "required": true, "q": "Who gets the email?", "help": "An email address. You can use commas for multiple people." },
       { "key": "subject", "label": "subject", "type": "text", "placeholder": "New order received: ${header.orderId}", "required": true, "q": "What's the subject line?", "help": "You can include parts of the message with ${body} or ${header.name}." },
-      { "key": "host", "label": "SMTP host", "type": "text", "placeholder": "smtp.gmail.com", "required": true, "q": "Which email server?", "help": "Your SMTP server address. Gmail is smtp.gmail.com, Outlook is smtp.office365.com." },
+      { "key": "host", "label": "SMTP host", "type": "text", "linkable": true, "placeholder": "smtp.gmail.com", "required": true, "q": "Which email server?", "help": "Literal or email.host in App config." },
       { "key": "port", "label": "SMTP port", "type": "number", "placeholder": "587", "required": true, "defaultValue": 587, "q": "Which port?", "help": "587 for TLS (recommended), 465 for SSL, 25 for plain (not recommended)." },
-      { "key": "username", "label": "username", "type": "text", "required": true, "q": "Your email address?", "help": "Used to authenticate with the mail server." },
-      { "key": "password", "label": "password", "type": "password", "required": true, "q": "Email password or app password?", "help": "Stored as a secret. For Gmail, use an App Password, not your main password." }
+      { "key": "username", "label": "username", "type": "text", "linkable": true, "required": true, "q": "Your email address?", "help": "Literal or email.username in App config." },
+      { "key": "password", "label": "password", "type": "password", "linkable": true, "required": true, "q": "Email password or app password?", "help": "Literal or email.password in App config (mark secret in App config for export)." }
     ]
   },
   {
@@ -319,7 +334,7 @@
         { "value": "insert", "title": "Insert", "sub": "Always create a new row" },
         { "value": "upsert", "title": "Upsert", "sub": "Update if exists, else insert" }
       ], "q": "Insert or update?", "help": "Insert always adds a new row. Upsert updates if it exists, inserts if not." },
-      { "key": "jdbcUrl", "label": "JDBC URL", "type": "text", "placeholder": "jdbc:postgresql://localhost:5432/mydb", "required": true, "q": "What's the database URL?", "help": "Your database connection string. Starts with jdbc:postgresql:// for Postgres or jdbc:mysql:// for MySQL." }
+      { "key": "jdbcUrl", "label": "JDBC URL", "type": "text", "linkable": true, "placeholder": "jdbc:postgresql://localhost:5432/mydb", "required": true, "q": "What's the database URL?", "help": "Literal or db.jdbcUrl in App config." }
     ]
   },
   {
@@ -335,8 +350,8 @@
     "camelUri": "kafka:{{props.topic}}?brokers={{props.brokers}}",
     "description": "Publish messages to a Kafka topic",
     "props": [
-      { "key": "topic", "label": "topic", "type": "text", "placeholder": "orders.processed", "required": true, "q": "Which topic should we publish to?", "help": "Topics are like channel names." },
-      { "key": "brokers", "label": "brokers", "type": "text", "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "host:port pairs separated by commas." }
+      { "key": "topic", "label": "topic", "type": "text", "linkable": true, "placeholder": "orders.processed", "required": true, "q": "Which topic should we publish to?", "help": "Literal or kafka.topic in App config." },
+      { "key": "brokers", "label": "brokers", "type": "text", "linkable": true, "placeholder": "kafka1:9092,kafka2:9092", "required": true, "q": "Where are the Kafka servers?", "help": "Literal or kafka.brokers in App config." }
     ]
   },
   {
@@ -352,7 +367,7 @@
     "camelUri": "http://{{props.url}}",
     "description": "POST the message body to an HTTP endpoint",
     "props": [
-      { "key": "url", "label": "url", "type": "text", "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Include the https:// part." },
+      { "key": "url", "label": "url", "type": "text", "linkable": true, "placeholder": "https://api.partner.com/v1/orders", "required": true, "q": "What's the full URL?", "help": "Literal or http.url in App config." },
       { "key": "method", "label": "method", "type": "radio", "required": true, "options": [
         { "value": "POST", "title": "POST", "sub": "Send new data" },
         { "value": "PUT", "title": "PUT", "sub": "Update existing data" },

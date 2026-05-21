@@ -4,6 +4,7 @@ import type { FlowNode } from '../model/FlowNode.js';
 import { getBlock } from './BlockRegistry.js';
 import { resolveNodeProps, roleForBlockCategory } from './ComponentProperties.js';
 import { buildUriFromCatalog, splitEndpointUri, type EndpointDescriptor } from './ComponentUri.js';
+import { resolvePropForEmit } from './ConfigRefs.js';
 
 /**
  * Builds a Camel endpoint URI: catalog syntax first (Karavan), then blocks.json template fallback.
@@ -27,7 +28,9 @@ export function buildEndpointUri(blockType: string, props: FlowNode['props']): s
 }
 
 export function fillUriTemplate(uriTemplate: string, props: Record<string, string>): string {
-  return uriTemplate.replace(/\{\{props\.(\w+)\}\}/g, (_match, key: string) => String(props[key] ?? ''));
+  return uriTemplate.replace(/\{\{props\.(\w+)\}\}/g, (_match, key: string) =>
+    resolvePropForEmit(props[key])
+  );
 }
 
 export function getBlockUriTemplate(block: BlockDefinition): string {

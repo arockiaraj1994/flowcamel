@@ -13,7 +13,9 @@ export function ProjectCard({ project, onDelete }: Props) {
     <div className="fc-project-card" onClick={() => navigate(`/project/${project.id}`)}>
       <div className="fc-project-card__name">{project.name}</div>
       <div className="fc-project-card__meta">
-        {project.graph.nodes.length} blocks · Updated {new Date(project.updatedAt).toLocaleDateString()}
+        {project.graph.flows.reduce((n, f) => n + f.nodes.length, 0)} blocks ·{' '}
+        {project.graph.flows.length} flow{project.graph.flows.length === 1 ? '' : 's'} · Updated{' '}
+        {new Date(project.updatedAt).toLocaleDateString()}
       </div>
       <button
         className="fc-project-card__delete"

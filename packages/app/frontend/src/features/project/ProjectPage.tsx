@@ -4,17 +4,35 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import {
   Connection,
   Edge,
+  FinalConnectionState,
   Node,
   NodeChange,
   addEdge,
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
-import { FlowCanvas, BlockPanel, PropertyPanel } from '@flowcamel/designer';
-import type { BlockDefinition, FlowEdge, FlowGraph, FlowNode } from '@flowcamel/core';
-import { getBlock, orderedNodesFromGraph, validate, validateForYamlExport } from '@flowcamel/core';
+import {
+  FlowCanvas,
+  BlockPanel,
+  PropertyPanel,
+  ConnectionBlockPicker,
+  type FlowCanvasCoords,
+} from '@flowcamel/designer';
+import type { BlockDefinition, FlowDefinition, FlowEdge, FlowGraph, FlowNode } from '@flowcamel/core';
+import {
+  canConnect,
+  flowById,
+  getBlock,
+  getFlows,
+  getSuccessorBlocks,
+  orderedNodesFromFlow,
+  validate,
+  validateForYamlExport,
+} from '@flowcamel/core';
 import { useProjectStore } from './ProjectStore.js';
 import { StatusBar } from './StatusBar.js';
+import { ApplicationPropertiesPanel } from './ApplicationPropertiesPanel.js';
+import { RightPanel, type RightPanelTab } from './RightPanel.js';
 import { ConfigModal } from './ConfigModal.js';
 import { GenerateModal } from './GenerateModal.js';
 import { TestRunDrawer } from './TestRunDrawer.js';
@@ -22,6 +40,7 @@ import type { LogEntry } from './TestRunDrawer.js';
 import { getProject, stopTestRun as stopTestRunApi, streamTestRun, updateProject } from '../../api/backendClient.js';
 import { useAppStore } from '../../stores/appStore.js';
 import { syncGraphFromCanvas } from './syncGraphFromCanvas.js';
+import { FlowTabBar, flowTargetsFor } from './FlowTabBar.js';
 
 function deriveSubtitle(blockType: string, props: Record<string, string>): string {
   switch (blockType) {
@@ -31,6 +50,7 @@ function deriveSubtitle(blockType: string, props: Record<string, string>): strin
     case 'filter-action': return props['expression'] ? props['expression'].slice(0, 24) : '';
     case 'transform-action': return props['from'] && props['to'] ? `${props['from']} → ${props['to']}` : '';
     case 'set-body-action': return props['expression'] ? props['expression'].slice(0, 24) : '';
+    case 'call-flow-action': return props['targetRouteId'] ? `→ ${props['targetRouteId']}` : '';
     case 'log-action': return props['level'] ? `${props['level']} level` : '';
     case 'log-dest': return props['loggerName'] ? `logger: ${props['loggerName']}` : '';
     case 'email-dest': return props['to'] || '';
@@ -60,6 +80,26 @@ function nodeData(
   };
 }
 
+const NODE_WIDTH = 168;
+const NODE_HEIGHT = 86;
+const SUCCESSOR_OFFSET_X = 220;
+
+function flowPositionFromScreen(
+  api: FlowCanvasCoords | null,
+  clientX: number,
+  clientY: number,
+  rect: DOMRect
+): { x: number; y: number } {
+  const flowPos = api?.screenToFlowPosition({ x: clientX, y: clientY }) ?? {
+    x: clientX - rect.left - NODE_WIDTH / 2,
+    y: clientY - rect.top - NODE_HEIGHT / 2,
+  };
+  return {
+    x: Math.max(0, flowPos.x - NODE_WIDTH / 2),
+    y: Math.max(0, flowPos.y - NODE_HEIGHT / 2),
+  };
+}
+
 function ts(): string {
   const d = new Date();
   return (
@@ -83,6 +123,7 @@ export function ProjectPage() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [graphForGenerate, setGraphForGenerate] = useState<FlowGraph | null>(null);
+  const [rightTab, setRightTab] = useState<RightPanelTab>('block');
   const [showTestRun, setShowTestRun] = useState(false);
   const [testRunning, setTestRunning] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -92,13 +133,34 @@ export function ProjectPage() {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const flowCoordsRef = useRef<FlowCanvasCoords | null>(null);
   const draggingBlockRef = useRef<BlockDefinition | null>(null);
   const testRunAbortRef = useRef<AbortController | null>(null);
   draggingBlockRef.current = draggingBlock;
 
+  const [connectionPicker, setConnectionPicker] = useState<{
+    x: number;
+    y: number;
+    fromNodeId: string;
+    blocks: BlockDefinition[];
+  } | null>(null);
+
+  const activeFlowId = useProjectStore((s) => s.activeFlowId);
+  const flows = useMemo(() => getFlows(store.graph), [store.graph]);
+
   const liveGraph = useMemo(
-    () => syncGraphFromCanvas(store.graph, nodes, edges),
-    [store.graph, nodes, edges]
+    () => syncGraphFromCanvas(store.graph, activeFlowId, nodes, edges),
+    [store.graph, activeFlowId, nodes, edges]
+  );
+
+  const activeFlow = useMemo(
+    () => (activeFlowId ? flowById(liveGraph, activeFlowId) : flows[0]),
+    [liveGraph, activeFlowId, flows]
+  );
+
+  const flowTargets = useMemo(
+    () => flowTargetsFor(flows, activeFlowId ?? flows[0]?.id ?? ''),
+    [flows, activeFlowId]
   );
   const validation = validate(liveGraph);
   const graphValid = validation.valid;
@@ -110,26 +172,39 @@ export function ProjectPage() {
     };
   }, []);
 
+  function applyFlowToCanvas(flow: FlowDefinition) {
+    setNodes(
+      flow.nodes.map((n: FlowNode) => ({
+        id: n.id,
+        type: 'flowNode',
+        position: n.position ?? { x: 0, y: 0 },
+        data: nodeData(n, nodeStyle),
+      }))
+    );
+    setEdges(
+      flow.edges.map((e: FlowEdge) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        type: 'flowEdge',
+      }))
+    );
+  }
+
+  function handleSelectFlow(flowId: string) {
+    if (flowId === activeFlowId) return;
+    store.mergeCanvas(activeFlowId, nodes, edges);
+    store.setActiveFlow(flowId);
+    const flow = flowById(useProjectStore.getState().graph, flowId);
+    if (flow) applyFlowToCanvas(flow);
+  }
+
   useEffect(() => {
     if (!id) return;
     getProject(id).then((meta) => {
       store.loadGraph(meta.graph);
-      setNodes(
-        meta.graph.nodes.map((n: FlowNode) => ({
-          id: n.id,
-          type: 'flowNode',
-          position: n.position ?? { x: 0, y: 0 },
-          data: nodeData(n, nodeStyle),
-        }))
-      );
-      setEdges(
-        meta.graph.edges.map((e: FlowEdge) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          type: 'flowEdge',
-        }))
-      );
+      const flow = meta.graph.flows[0];
+      if (flow) applyFlowToCanvas(flow);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -171,10 +246,12 @@ export function ProjectPage() {
         e.clientY >= rect.top &&
         e.clientY <= rect.bottom
       ) {
-        const position = {
-          x: Math.max(20, e.clientX - rect.left - 78),
-          y: Math.max(20, e.clientY - rect.top - 43),
-        };
+        const position = flowPositionFromScreen(
+          flowCoordsRef.current,
+          e.clientX,
+          e.clientY,
+          rect
+        );
         const newNode = store.addNode(block.type, position);
         setNodes((nds) => [
           ...nds,
@@ -186,6 +263,12 @@ export function ProjectPage() {
           },
         ]);
         store.setSelectedNode(newNode.id);
+        canvasRef.current?.focus();
+        flowCoordsRef.current?.fitView({
+          nodes: [{ id: newNode.id }],
+          padding: 0.4,
+          duration: 200,
+        });
       }
       setDraggingBlock(null);
       setGhost(null);
@@ -212,6 +295,83 @@ export function ProjectPage() {
     [store, setEdges]
   );
 
+  const isValidConnection = useCallback(
+    (edge: Connection | Edge) => {
+      if (!edge.source || !edge.target) return false;
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const targetNode = nodes.find((n) => n.id === edge.target);
+      if (!sourceNode || !targetNode) return false;
+      const srcType = (sourceNode.data as { blockType?: string }).blockType ?? '';
+      const tgtType = (targetNode.data as { blockType?: string }).blockType ?? '';
+      return canConnect(srcType, tgtType);
+    },
+    [nodes]
+  );
+
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      if (state.isValid || !state.fromNode) return;
+      const blockType = (state.fromNode.data as { blockType?: string }).blockType ?? '';
+      const blocks = getSuccessorBlocks(blockType);
+      if (blocks.length === 0) return;
+      const clientX = 'clientX' in event ? event.clientX : 0;
+      const clientY = 'clientY' in event ? event.clientY : 0;
+      setConnectionPicker({
+        x: clientX,
+        y: clientY,
+        fromNodeId: state.fromNode.id,
+        blocks,
+      });
+    },
+    []
+  );
+
+  const handleConnectionPickerSelect = useCallback(
+    (block: BlockDefinition) => {
+      if (!connectionPicker) return;
+      const fromNode = nodes.find((n) => n.id === connectionPicker.fromNodeId);
+      const position = fromNode
+        ? { x: fromNode.position.x + SUCCESSOR_OFFSET_X, y: fromNode.position.y }
+        : { x: 100, y: 100 };
+      const newNode = store.addNode(block.type, position);
+      const edge: FlowEdge = {
+        id: `${connectionPicker.fromNodeId}-${newNode.id}`,
+        source: connectionPicker.fromNodeId,
+        target: newNode.id,
+      };
+      store.addEdge(edge);
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: newNode.id,
+          type: 'flowNode',
+          position,
+          data: nodeData(newNode, nodeStyle),
+        },
+      ]);
+      setEdges((eds) =>
+        addEdge(
+          {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            type: 'flowEdge',
+          },
+          eds
+        )
+      );
+      store.setSelectedNode(newNode.id);
+      setConnectionPicker(null);
+      canvasRef.current?.focus();
+      flowCoordsRef.current?.fitView({
+        nodes: [{ id: newNode.id }],
+        padding: 0.4,
+        duration: 200,
+      });
+    },
+    [connectionPicker, nodes, nodeStyle, setNodes, setEdges, store]
+  );
+
   function onSidebarDragStart(block: BlockDefinition, clientX: number, clientY: number) {
     setDraggingBlock(block);
     setGhost({ x: clientX, y: clientY });
@@ -227,11 +387,11 @@ export function ProjectPage() {
   }
 
   const selectedNode: FlowNode | null =
-    store.graph.nodes.find((n: FlowNode) => n.id === store.selectedNodeId) ?? null;
+    activeFlow?.nodes.find((n: FlowNode) => n.id === store.selectedNodeId) ?? null;
 
   function handleNodeUpdate(nodeId: string, props: Record<string, string>) {
     store.updateNodeProps(nodeId, props);
-    const blockType = store.graph.nodes.find((n) => n.id === nodeId)?.blockType ?? '';
+    const blockType = activeFlow?.nodes.find((n) => n.id === nodeId)?.blockType ?? '';
     const subtitle = deriveSubtitle(blockType, props);
     if (subtitle) store.updateNodeSubtitle(nodeId, subtitle);
     setNodes((nds: Node[]) =>
@@ -370,7 +530,7 @@ export function ProjectPage() {
       { time: ts(), level: 'warn', msg: '[flowcamel] Test run stopped by user.' },
     ]);
     setTestRunning(false);
-    applyTestVisuals(null, store.graph.nodes);
+    applyTestVisuals(null, activeFlow?.nodes ?? []);
   }
 
   async function startTestRun() {
@@ -387,7 +547,8 @@ export function ProjectPage() {
     const abort = new AbortController();
     testRunAbortRef.current = abort;
 
-    const orderedNodes = orderedNodesFromGraph(graph);
+    const runFlow = activeFlowId ? flowById(graph, activeFlowId) : flows[0];
+    const orderedNodes = runFlow ? orderedNodesFromFlow(runFlow) : [];
     setShowTestRun(true);
     setLogs([]);
     setTestRunYaml(undefined);
@@ -450,7 +611,7 @@ export function ProjectPage() {
   }
 
   function getSyncedGraph() {
-    return syncGraphFromCanvas(store.graph, nodes, edges);
+    return syncGraphFromCanvas(store.graph, activeFlowId, nodes, edges);
   }
 
   async function handleSave() {
@@ -475,7 +636,7 @@ export function ProjectPage() {
     setShowGenerate(true);
   }
 
-  const configNode = configFor ? store.graph.nodes.find((n) => n.id === configFor) : null;
+  const configNode = configFor ? activeFlow?.nodes.find((n) => n.id === configFor) : null;
   const configBlock = configNode ? getBlock(configNode.blockType) : null;
 
   if (!id) {
@@ -548,6 +709,23 @@ export function ProjectPage() {
         </div>
       </div>
 
+      <FlowTabBar
+        flows={flows}
+        activeFlowId={activeFlowId ?? flows[0]?.id ?? ''}
+        onSelect={handleSelectFlow}
+        onAdd={() => {
+          const flow = store.addFlow();
+          applyFlowToCanvas(flow);
+        }}
+        onRename={(flowId, name) => store.renameFlow(flowId, name)}
+        onDelete={(flowId) => {
+          store.mergeCanvas(activeFlowId, nodes, edges);
+          store.deleteFlow(flowId);
+          const next = store.activeFlow();
+          if (next) applyFlowToCanvas(next);
+        }}
+      />
+
       <PanelGroup direction="horizontal" className="fc-panels" style={{ flex: 1, overflow: 'hidden' }}>
         <Panel defaultSize={18} minSize={14} className="fc-panel">
           <BlockPanel
@@ -563,11 +741,25 @@ export function ProjectPage() {
             onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onConnectEnd={onConnectEnd}
+            isValidConnection={isValidConnection}
+            onCoordsReady={(api) => {
+              flowCoordsRef.current = api;
+            }}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
             dropActive={dropActive}
             canvasRef={canvasRef}
           />
+          {connectionPicker && (
+            <ConnectionBlockPicker
+              x={connectionPicker.x}
+              y={connectionPicker.y}
+              blocks={connectionPicker.blocks}
+              onSelect={handleConnectionPickerSelect}
+              onClose={() => setConnectionPicker(null)}
+            />
+          )}
           {testRunning && !showTestRun && (
             <button
               type="button"
@@ -586,7 +778,7 @@ export function ProjectPage() {
               onClose={() => {
                 setShowTestRun(false);
                 if (!testRunning) {
-                  applyTestVisuals(null, store.graph.nodes);
+                  applyTestVisuals(null, activeFlow?.nodes ?? []);
                 }
               }}
               onReplay={startTestRun}
@@ -595,14 +787,26 @@ export function ProjectPage() {
           )}
         </Panel>
         <PanelResizeHandle className="fc-resize-handle" />
-        <Panel defaultSize={24} minSize={18} className="fc-panel">
-          <PropertyPanel
-            node={selectedNode}
-            allNodes={store.graph.nodes}
-            onNodeUpdate={handleNodeUpdate}
-            onOpenConfig={() => selectedNode && setConfigFor(selectedNode.id)}
-            onCreateFlow={onCreateFlow}
-          />
+        <Panel defaultSize={24} minSize={18} className="fc-panel fc-panel--inspector">
+          <RightPanel tab={rightTab} onTabChange={setRightTab}>
+            {rightTab === 'properties' ? (
+              <ApplicationPropertiesPanel
+                projectName={store.graph.name}
+                config={store.graph.config}
+                onChange={(config) => store.updateProjectConfig(config)}
+              />
+            ) : (
+              <PropertyPanel
+                node={selectedNode}
+                allNodes={activeFlow?.nodes ?? []}
+                projectConfig={store.graph.config}
+                flowTargets={flowTargets}
+                onNodeUpdate={handleNodeUpdate}
+                onOpenConfig={() => selectedNode && setConfigFor(selectedNode.id)}
+                onCreateFlow={onCreateFlow}
+              />
+            )}
+          </RightPanel>
         </Panel>
       </PanelGroup>
 
@@ -630,6 +834,8 @@ export function ProjectPage() {
         <ConfigModal
           node={configNode}
           block={configBlock}
+          projectConfig={store.graph.config}
+          flowTargets={flowTargets}
           onClose={() => setConfigFor(null)}
           onSave={handleConfigSave}
           onDelete={() => {

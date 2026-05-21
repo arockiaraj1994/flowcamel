@@ -1,5 +1,6 @@
 package com.flowcamel.core.uri;
 
+import com.flowcamel.core.config.ConfigRefs;
 import com.flowcamel.core.model.BlockCategory;
 import com.flowcamel.core.model.BlockDefinition;
 import com.flowcamel.core.model.EndpointDescriptor;
@@ -35,7 +36,8 @@ public final class UriBuilder {
     StringBuilder sb = new StringBuilder();
     while (m.find()) {
       String key = m.group(1);
-      m.appendReplacement(sb, Matcher.quoteReplacement(String.valueOf(props.getOrDefault(key, ""))));
+      m.appendReplacement(
+          sb, Matcher.quoteReplacement(ConfigRefs.resolvePropForEmit(props.getOrDefault(key, ""))));
     }
     m.appendTail(sb);
     return sb.toString();

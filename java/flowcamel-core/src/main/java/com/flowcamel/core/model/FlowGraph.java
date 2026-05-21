@@ -8,6 +8,9 @@ import java.util.List;
 public class FlowGraph {
   public String id = "";
   public String name = "";
-  public List<FlowNode> nodes = new ArrayList<>();
-  public List<FlowEdge> edges = new ArrayList<>();
+  public List<FlowDefinition> flows = new ArrayList<>();
+  public ProjectConfig config;
+  /** Legacy single-flow; migrated by {@link com.flowcamel.core.graph.GraphNormalizer}. */
+  public List<FlowNode> nodes;
+  public List<FlowEdge> edges;
 }

@@ -1,7 +1,15 @@
 export { BlockCategory } from './model/BlockCategory.js';
 export type { BlockDefinition, PropSchema } from './model/BlockDefinition.js';
 export type { FlowEdge } from './model/FlowEdge.js';
+export type { FlowDefinition } from './model/FlowDefinition.js';
 export type { FlowGraph } from './model/FlowGraph.js';
+export type {
+  ConfigEntry,
+  ConfigProfile,
+  ProjectConfig,
+  VaultConfig,
+  VaultProvider,
+} from './model/ProjectConfig.js';
 export type { FlowNode } from './model/FlowNode.js';
 export type { ProjectMeta } from './model/ProjectMeta.js';
 
@@ -52,9 +60,46 @@ export {
 } from './api/PaletteRegistry.js';
 export { emitRouteStep } from './api/RouteDsl.js';
 export type { CamelComponentMeta, CamelComponentDescriptor, CamelCatalogProperty } from './model/CamelCatalog.js';
+export {
+  CONFIG_REF_PREFIX,
+  configRefKey,
+  isConfigRef,
+  listConfigRefsInProps,
+  resolvePropForEmit,
+} from './api/ConfigRefs.js';
+export {
+  buildApplicationYamlPreview,
+  buildProfileYaml,
+  blockConfigPrefix,
+  configKeyExists,
+  defaultProjectConfig,
+  entriesToYamlMap,
+  getDefinedConfigKeys,
+  getDefinedConfigKeyNames,
+  suggestConfigKeys,
+  suggestPropertyKeyForField,
+} from './api/ApplicationConfigYaml.js';
+export { isFieldLinkableToConfig } from './api/PropertyBinding.js';
+export {
+  canConnect,
+  getSuccessorBlocks,
+  getSuccessorCategories,
+  hasSuccessors,
+} from './api/connectionRules.js';
 export { validate, validateForYamlExport } from './api/GraphValidator.js';
 export type { ValidationResult } from './api/GraphValidator.js';
 export { graphToYamlRoutes } from './api/RouteYamlEmitter.js';
-export { buildYamlRoute } from './api/YamlRouteBuilder.js';
-export { orderedNodesFromGraph } from './api/graphOrder.js';
+export {
+  buildYamlRoute,
+  buildYamlRouteFromFlow,
+  buildAllYamlRoutes,
+} from './api/YamlRouteBuilder.js';
+export { orderedNodesFromFlow, orderedNodesFromGraph } from './api/graphOrder.js';
+export {
+  normalizeGraph,
+  createFlowDefinition,
+  allocateRouteId,
+  getFlows,
+  flowById,
+} from './api/normalizeGraph.js';
 export { fromJSON, toJSON } from './api/GraphSerializer.js';

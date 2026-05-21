@@ -1,6 +1,7 @@
 package com.flowcamel.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowcamel.core.config.ApplicationConfigEmitter;
 import com.flowcamel.core.graph.GraphValidator;
 import com.flowcamel.core.model.FlowGraph;
 import com.flowcamel.core.model.ProjectMeta;
@@ -80,6 +81,21 @@ public class TestRunService {
     activeByProject.put(projectId, run);
     try {
       Files.writeString(yamlPath, yaml);
+      String propsContent = ApplicationConfigEmitter.buildApplicationProperties(graph.config, "dev");
+      if (!propsContent.isBlank()) {
+        Files.writeString(workDir.resolve("application.properties"), propsContent);
+        writeEvent(
+            writer,
+            Map.of(
+                "type",
+                "log",
+                "time",
+                formatTime(),
+                "level",
+                "info",
+                "msg",
+                "[flowcamel] Wrote application.properties (dev profile defaults for JBang)"));
+      }
       RunInvocation inv = resolveRunInvocation("routes.camel.yaml", workDir);
       run.invocation = inv;
       writeEvent(

@@ -10,9 +10,11 @@ const AI_EXAMPLES = [
 interface Props {
   onCreateFlow: (prompt: string) => void;
   nodeCount: number;
+  /** When true, fits under inspector tabs without a second large header. */
+  compact?: boolean;
 }
 
-export function AIEmptyState({ onCreateFlow, nodeCount }: Props) {
+export function AIEmptyState({ onCreateFlow, nodeCount, compact }: Props) {
   const [prompt, setPrompt] = useState('');
 
   const submit = (text: string) => {
@@ -23,20 +25,37 @@ export function AIEmptyState({ onCreateFlow, nodeCount }: Props) {
   };
 
   return (
-    <div className="rpanel ai-empty">
-      <div className="ai-empty-head">
-        <div className="ai-empty-title">
-          <span className="ai-empty-spark" aria-hidden>✦</span>
-          Describe your integration
+    <div className={`rpanel ai-empty${compact ? ' ai-empty--compact' : ''}`}>
+      {!compact && (
+        <div className="ai-empty-head">
+          <div className="ai-empty-title">
+            <span className="ai-empty-spark" aria-hidden>✦</span>
+            Describe your integration
+          </div>
+          <p className="ai-empty-sub">
+            {nodeCount === 0
+              ? 'Tell me what you want in plain English. I\'ll draft the flow — you can edit anything after.'
+              : 'Select a block on the canvas to configure it, or describe what to add next.'}
+          </p>
         </div>
-        <p className="ai-empty-sub">
-          {nodeCount === 0
-            ? 'Tell me what you want in plain English. I\'ll draft the flow — you can edit anything after.'
-            : 'Select a block on the canvas to configure it, or describe what to add next.'}
-        </p>
-      </div>
+      )}
 
       <div className="ai-empty-body">
+        {compact && (
+          <div className="ai-empty-compact-intro">
+            <span className="ai-empty-spark" aria-hidden>✦</span>
+            <div>
+              <div className="ai-empty-compact-title">
+                {nodeCount === 0 ? 'Start with a description' : 'No block selected'}
+              </div>
+              <p className="ai-empty-compact-sub">
+                {nodeCount === 0
+                  ? 'Describe your flow in plain English, or pick a block on the canvas.'
+                  : 'Click a node to configure it, or describe what to add next.'}
+              </p>
+            </div>
+          </div>
+        )}
         <label className="ai-prompt-label" htmlFor="ai-flow-prompt">
           Your description
         </label>

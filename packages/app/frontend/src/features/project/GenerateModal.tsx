@@ -26,10 +26,12 @@ export function GenerateModal({ projectId, graph, onClose, onSaved }: Props) {
   const [generating, setGenerating] = useState(false);
   const yamlValidation = validateForYamlExport(graph);
   const projectName = graph.name;
-  const { nodes, edges } = graph;
+  const blockCount = graph.flows.reduce((n, f) => n + f.nodes.length, 0);
+  const connectionCount = graph.flows.reduce((n, f) => n + f.edges.length, 0);
+  const flowCount = graph.flows.length;
   const slug = (projectName || 'flow-project').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const pkg = `com.flowcamel.${slug.replace(/-/g, '')}`;
-  const sizeKB = 28 + nodes.length * 2 + edges.length;
+  const sizeKB = 28 + blockCount * 2 + connectionCount + flowCount;
 
   const pkgPath = pkg.replace(/\./g, '/');
   const tree = [
@@ -45,8 +47,14 @@ export function GenerateModal({ projectId, graph, onClose, onSaved }: Props) {
     { name: 'Application.java', type: 'file', depth: 5, size: '0.5 KB' },
     { name: 'resources', type: 'dir', depth: 3 },
     { name: 'application.yml', type: 'file', depth: 4, size: '0.9 KB' },
+    ...(graph.config?.exportProfiles ?? []).map((p) => ({
+      name: `application-${p}.yml`,
+      type: 'file' as const,
+      depth: 4,
+      size: '0.4 KB',
+    })),
     { name: 'camel', type: 'dir', depth: 4 },
-    { name: 'routes.camel.yaml', type: 'file', depth: 5, size: `${(0.8 + nodes.length * 0.2).toFixed(1)} KB` },
+    { name: 'routes.camel.yaml', type: 'file', depth: 5, size: `${(0.8 + flowCount * 0.4 + blockCount * 0.15).toFixed(1)} KB` },
   ];
 
   async function handleDownload() {
@@ -115,15 +123,26 @@ export function GenerateModal({ projectId, graph, onClose, onSaved }: Props) {
           </div>
 
           <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <Stat label="blocks" value={nodes.length} />
-            <Stat label="connections" value={edges.length} />
+            <Stat label="flows" value={flowCount} />
+            <Stat label="blocks" value={blockCount} />
+            <Stat label="connections" value={connectionCount} />
             <Stat label="zip size" value={`~${sizeKB} KB`} />
           </div>
 
           <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--color-background-secondary)', borderRadius: 'var(--border-radius-md)', fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
-            Includes <code style={{ fontSize: 10 }}>mvnw</code>, <code style={{ fontSize: 10 }}>README.md</code>, and{' '}
-            <code style={{ fontSize: 10 }}>src/main/resources/camel/routes.camel.yaml</code>. After unzip:{' '}
-            <code style={{ fontSize: 10 }}>./mvnw spring-boot:run</code>
+            Includes <code style={{ fontSize: 10 }}>mvnw</code>, <code style={{ fontSize: 10 }}>README.md</code>,{' '}
+            <code style={{ fontSize: 10 }}>application.yml</code>
+            {(graph.config?.exportProfiles?.length ?? 0) > 0 && (
+              <>
+                {' '}
+                and profile files ({graph.config?.exportProfiles?.join(', ')})
+              </>
+            )}
+            . Secrets export as <code style={{ fontSize: 10 }}>{'${property.key}'}</code> placeholders.
+            {(graph.config?.vault?.provider ?? 'none') !== 'none' && (
+              <> Vault: {graph.config?.vault?.provider}.</>
+            )}
+            {' '}After unzip: <code style={{ fontSize: 10 }}>./mvnw spring-boot:run</code>
           </div>
 
           {!yamlValidation.valid && (

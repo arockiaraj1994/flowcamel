@@ -1,4 +1,5 @@
 import { BlockCategory, getBlock, validate, validateForYamlExport } from '@flowcamel/core';
+import type { FlowGraph } from '@flowcamel/core';
 import { useProjectStore } from './ProjectStore.js';
 
 function statusMessage(
@@ -19,23 +20,27 @@ function statusMessage(
 }
 
 interface Props {
-  /** Canvas-synced graph (includes live edges from React Flow). */
-  graph?: ReturnType<typeof useProjectStore.getState>['graph'];
+  graph?: FlowGraph;
 }
 
 export function StatusBar({ graph: graphProp }: Props) {
   const storeGraph = useProjectStore((s) => s.graph);
+  const activeFlowId = useProjectStore((s) => s.activeFlowId);
   const graph = graphProp ?? storeGraph;
+  const activeFlow =
+    graph.flows.find((f) => f.id === activeFlowId) ?? graph.flows[0];
+  const flowCount = graph.flows.length;
+
   const result = validate(graph);
   const yamlResult = validateForYamlExport(graph);
-  const nodeCount = graph.nodes.length;
-  const edgeCount = graph.edges.length;
-  const sourceCount = graph.nodes.filter(
-    (n) => getBlock(n.blockType)?.category === BlockCategory.SOURCE
-  ).length;
-  const destCount = graph.nodes.filter(
-    (n) => getBlock(n.blockType)?.category === BlockCategory.DESTINATION
-  ).length;
+  const nodeCount = activeFlow?.nodes.length ?? 0;
+  const edgeCount = activeFlow?.edges.length ?? 0;
+  const sourceCount =
+    activeFlow?.nodes.filter((n) => getBlock(n.blockType)?.category === BlockCategory.SOURCE)
+      .length ?? 0;
+  const destCount =
+    activeFlow?.nodes.filter((n) => getBlock(n.blockType)?.category === BlockCategory.DESTINATION)
+      .length ?? 0;
   const msg = statusMessage(result.valid, sourceCount, destCount);
 
   return (
@@ -46,7 +51,7 @@ export function StatusBar({ graph: graphProp }: Props) {
             className="dot"
             style={{ background: nodeCount ? 'var(--accent)' : 'var(--color-border-secondary)' }}
           />
-          {nodeCount} block{nodeCount === 1 ? '' : 's'} placed
+          {nodeCount} block{nodeCount === 1 ? '' : 's'} · {flowCount} flow{flowCount === 1 ? '' : 's'}
         </span>
         <span className="sep" />
         <span className="seg">

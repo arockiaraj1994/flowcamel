@@ -1,6 +1,7 @@
 package com.flowcamel.core.graph;
 
 import com.flowcamel.core.model.BlockCategory;
+import com.flowcamel.core.model.FlowDefinition;
 import com.flowcamel.core.model.FlowGraph;
 import com.flowcamel.core.model.FlowNode;
 import com.flowcamel.core.registry.BlockRegistry;
@@ -14,25 +15,36 @@ import java.util.Set;
 public final class GraphOrder {
   private GraphOrder() {}
 
-  public static List<FlowNode> orderedNodesFromGraph(FlowGraph graph) {
+  public static List<FlowNode> orderedNodesFromFlow(FlowDefinition flow) {
     FlowNode source =
-        graph.nodes.stream()
-            .filter(n -> BlockRegistry.getBlock(n.blockType).map(b -> b.category == BlockCategory.SOURCE).orElse(false))
+        flow.nodes.stream()
+            .filter(
+                n ->
+                    BlockRegistry.getBlock(n.blockType)
+                        .map(b -> b.category == BlockCategory.SOURCE)
+                        .orElse(false))
             .findFirst()
             .orElse(null);
     if (source == null) return List.of();
 
     Map<String, List<String>> adj = new HashMap<>();
-    for (FlowNode n : graph.nodes) adj.put(n.id, new ArrayList<>());
-    for (var e : graph.edges) adj.computeIfAbsent(e.source, k -> new ArrayList<>()).add(e.target);
+    for (FlowNode n : flow.nodes) adj.put(n.id, new ArrayList<>());
+    for (var e : flow.edges) adj.computeIfAbsent(e.source, k -> new ArrayList<>()).add(e.target);
 
     Map<String, FlowNode> nodeMap = new HashMap<>();
-    for (FlowNode n : graph.nodes) nodeMap.put(n.id, n);
+    for (FlowNode n : flow.nodes) nodeMap.put(n.id, n);
 
     List<FlowNode> ordered = new ArrayList<>();
     Set<String> visited = new HashSet<>();
     dfs(source.id, adj, nodeMap, visited, ordered);
     return ordered;
+  }
+
+  /** @deprecated use {@link #orderedNodesFromFlow} */
+  public static List<FlowNode> orderedNodesFromGraph(FlowGraph graph) {
+    List<FlowDefinition> flows = GraphNormalizer.getFlows(graph);
+    if (flows.isEmpty()) return List.of();
+    return orderedNodesFromFlow(flows.getFirst());
   }
 
   private static void dfs(

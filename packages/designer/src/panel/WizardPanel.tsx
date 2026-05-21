@@ -2,12 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import type { BlockDefinition } from '@flowcamel/core';
 import type { FlowNode } from '@flowcamel/core';
 import { EipGlyph } from './EipGlyph.js';
-import { CatalogPropertyField } from './CatalogPropertyField.js';
-import { getDefaultPropsForBlock, getWizardSteps } from '@flowcamel/core';
+import { PropertyRefField } from './PropertyRefField.js';
+import type { ConfigEntry, ProjectConfig } from '@flowcamel/core';
+
+export interface FlowTargetOption {
+  routeId: string;
+  name: string;
+}
+import { getDefaultPropsForBlock, getWizardSteps, isConfigRef } from '@flowcamel/core';
 
 interface Props {
   block: BlockDefinition;
   node: FlowNode;
+  projectConfig?: ProjectConfig;
+  flowTargets?: FlowTargetOption[];
   onNodeUpdate: (nodeId: string, props: Record<string, string>) => void;
   onOpenConfig: () => void;
 }
@@ -64,7 +72,15 @@ function aiHintFor(block: BlockDefinition): string {
   }
 }
 
-export function WizardPanel({ block, node, onNodeUpdate, onOpenConfig }: Props) {
+export function WizardPanel({
+  block,
+  node,
+  projectConfig,
+  flowTargets = [],
+  onNodeUpdate,
+  onOpenConfig,
+}: Props) {
+  const configKeys: ConfigEntry[] = projectConfig?.default ?? [];
   const steps = getWizardSteps(block.type);
   const stepsTotal = steps.length;
 
@@ -129,7 +145,7 @@ export function WizardPanel({ block, node, onNodeUpdate, onOpenConfig }: Props) 
     step.defaultValue !== undefined && step.defaultValue !== '' ? String(step.defaultValue) : '';
   const val = scratchVal !== undefined ? scratchVal : (node.props[step.key] ?? defaultStr);
   const setVal = (v: string) => setScratch({ ...scratch, [step.key]: v });
-  const filled = val !== '' && val !== undefined && val !== null;
+  const filled = (val !== '' && val !== undefined && val !== null) || isConfigRef(val);
   const canAdvance = filled || step.type === 'number';
 
   const commit = () => {
@@ -167,7 +183,29 @@ export function WizardPanel({ block, node, onNodeUpdate, onOpenConfig }: Props) 
         {step.help && <div className="wiz-help">{step.help}</div>}
 
         <div className="field-label">{step.label}</div>
-        <CatalogPropertyField step={step} value={val} onChange={setVal} onEnter={next} />
+        {block.type === 'call-flow-action' && step.key === 'targetRouteId' ? (
+          <select
+            className="field filled"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+          >
+            <option value="">Select target flow…</option>
+            {flowTargets.map((t) => (
+              <option key={t.routeId} value={t.routeId}>
+                {t.name} (direct:{t.routeId})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <PropertyRefField
+            step={step}
+            value={val}
+            onChange={setVal}
+            configKeys={configKeys}
+            blockType={block.type}
+            onEnter={next}
+          />
+        )}
 
         {stepIdx === 0 && (
           <div className="wiz-tip">

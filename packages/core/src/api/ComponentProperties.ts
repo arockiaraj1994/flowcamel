@@ -3,6 +3,7 @@ import type { BlockDefinition, PropSchema } from '../model/BlockDefinition.js';
 import type { CamelCatalogProperty } from '../model/CamelCatalog.js';
 import { getCatalogComponent } from './CatalogRegistry.js';
 import { getBlock } from './BlockRegistry.js';
+import { isFieldLinkableToConfig } from './PropertyBinding.js';
 
 export type ComponentRole = 'consumer' | 'producer';
 
@@ -72,7 +73,14 @@ export function catalogPropToSchema(cp: CamelCatalogProperty, overlay?: PropSche
       (typeof cp.defaultValue === 'boolean' ? String(cp.defaultValue) : cp.defaultValue),
     q: overlay?.q ?? cp.displayName,
     help: overlay?.help ?? cp.description,
+    linkable: overlay?.linkable ?? (cp.secret ? true : undefined),
   };
+}
+
+/** After building schema, apply linkable heuristic for catalog-only fields. */
+export function enrichSchemaLinkable(schema: PropSchema): PropSchema {
+  if (schema.linkable !== undefined) return schema;
+  return { ...schema, linkable: isFieldLinkableToConfig(schema) ? true : undefined };
 }
 
 function mapCatalogType(cp: CamelCatalogProperty): PropSchema['type'] {
@@ -139,7 +147,7 @@ export function getConfigPropertiesForBlock(blockType: string): PropSchema[] {
     for (const cp of getComponentProperties(block.scheme, role)) {
       if (keys.has(cp.name)) continue;
       if (labelHas(cp, 'advanced') && !cp.required) continue;
-      result.push(catalogPropToSchema(cp));
+      result.push(enrichSchemaLinkable(catalogPropToSchema(cp)));
       keys.add(cp.name);
     }
   }

@@ -13,11 +13,9 @@ public final class RouteYamlEmitter {
   private RouteYamlEmitter() {}
 
   public static String graphToYamlRoutes(FlowGraph graph) {
-    Map<String, Object> route = YamlRouteBuilder.buildYamlRoute(graph);
-    if (route == null) return "[]\n";
-    List<Map<String, Object>> doc = new ArrayList<>();
-    doc.add(route);
-    return YAML.dump(doc);
+    List<Map<String, Object>> routes = YamlRouteBuilder.buildAllYamlRoutes(graph);
+    if (routes.isEmpty()) return "[]\n";
+    return YAML.dump(routes);
   }
 
   /** Block-style YAML with list items indented under {@code steps} (matches js-yaml / Camel JBang). */

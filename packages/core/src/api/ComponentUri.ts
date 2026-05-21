@@ -1,4 +1,5 @@
 import type { CamelCatalogProperty } from '../model/CamelCatalog.js';
+import { resolvePropForEmit } from './ConfigRefs.js';
 import { getCatalogComponent } from './CatalogRegistry.js';
 import { getComponentProperties, type ComponentRole } from './ComponentProperties.js';
 
@@ -154,8 +155,8 @@ function appendQuery(
   const params: string[] = [];
   for (const p of catalogProps) {
     if (pathNames.has(p.name) || p.kind === 'path') continue;
-    const val = props[p.name];
-    if (val === undefined || val === '') continue;
+    const val = resolvePropForEmit(props[p.name]);
+    if (!val) continue;
     params.push(`${p.name}=${encodeURIComponent(val)}`);
   }
   if (params.length === 0) return uri;
@@ -178,8 +179,8 @@ export function buildUriFromCatalog(
   for (let i = 1; i < parts.length; i++) {
     const param = parts[i];
     if (!param) return '';
-    const val = props[param];
-    if (val === undefined || val === '') return '';
+    const val = resolvePropForEmit(props[param]);
+    if (!val) return '';
     uri += (separators[i - 1] ?? ':') + val;
   }
 

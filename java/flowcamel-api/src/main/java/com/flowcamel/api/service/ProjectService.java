@@ -1,6 +1,7 @@
 package com.flowcamel.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowcamel.core.graph.GraphNormalizer;
 import com.flowcamel.core.model.FlowGraph;
 import com.flowcamel.core.model.ProjectMeta;
 import io.agroal.api.AgroalDataSource;
@@ -44,7 +45,8 @@ public class ProjectService {
   public ProjectMeta create(String name, FlowGraph graph) throws SQLException {
     String id = UUID.randomUUID().toString();
     String now = Instant.now().toString();
-    if (graph == null) graph = emptyGraph(name);
+    if (graph == null) graph = GraphNormalizer.emptyGraph(name);
+    graph = GraphNormalizer.normalize(graph);
     graph.id = id;
     graph.name = name;
     insert(id, name, graph, now, now);
@@ -56,7 +58,7 @@ public class ProjectService {
     if (existing.isEmpty()) return Optional.empty();
     ProjectMeta ex = existing.get();
     String newName = name != null ? name : ex.name;
-    FlowGraph newGraph = graph != null ? graph : ex.graph;
+    FlowGraph newGraph = GraphNormalizer.normalize(graph != null ? graph : ex.graph);
     newGraph.id = id;
     newGraph.name = newName;
     String now = Instant.now().toString();
@@ -108,16 +110,11 @@ public class ProjectService {
       m.name = rs.getString("name");
       m.createdAt = rs.getString("created_at");
       m.updatedAt = rs.getString("updated_at");
-      m.graph = objectMapper.readValue(rs.getString("graph_json"), FlowGraph.class);
+      m.graph = GraphNormalizer.normalize(objectMapper.readValue(rs.getString("graph_json"), FlowGraph.class));
       return m;
     } catch (Exception e) {
       throw new SQLException("Failed to parse project graph", e);
     }
   }
 
-  private static FlowGraph emptyGraph(String name) {
-    FlowGraph g = new FlowGraph();
-    g.name = name;
-    return g;
-  }
 }

@@ -1,8 +1,11 @@
 package com.flowcamel.core.yaml;
 
+import com.flowcamel.core.config.ConfigRefs;
+import com.flowcamel.core.graph.GraphNormalizer;
 import com.flowcamel.core.graph.GraphOrder;
 import com.flowcamel.core.model.BlockCategory;
 import com.flowcamel.core.model.BlockDefinition;
+import com.flowcamel.core.model.FlowDefinition;
 import com.flowcamel.core.model.FlowGraph;
 import com.flowcamel.core.model.FlowNode;
 import com.flowcamel.core.registry.BlockRegistry;
@@ -17,15 +20,27 @@ import java.util.Optional;
 public final class YamlRouteBuilder {
   private YamlRouteBuilder() {}
 
+  public static List<Map<String, Object>> buildAllYamlRoutes(FlowGraph graph) {
+    List<Map<String, Object>> routes = new ArrayList<>();
+    for (FlowDefinition flow : GraphNormalizer.getFlows(graph)) {
+      Map<String, Object> route = buildYamlRouteFromFlow(flow);
+      if (route != null) routes.add(route);
+    }
+    return routes;
+  }
+
   public static Map<String, Object> buildYamlRoute(FlowGraph graph) {
-    return buildYamlRoute(graph, "flowcamel-route");
+    List<Map<String, Object>> all = buildAllYamlRoutes(graph);
+    return all.isEmpty() ? null : all.getFirst();
   }
 
   @SuppressWarnings("unchecked")
-  public static Map<String, Object> buildYamlRoute(FlowGraph graph, String routeId) {
-    List<FlowNode> ordered = GraphOrder.orderedNodesFromGraph(graph);
+  public static Map<String, Object> buildYamlRouteFromFlow(FlowDefinition flow) {
+    List<FlowNode> ordered = GraphOrder.orderedNodesFromFlow(flow);
     if (ordered.isEmpty()) return null;
 
+    String routeId =
+        flow.routeId != null && !flow.routeId.isBlank() ? flow.routeId.trim() : "flow-1";
     FlowNode source = ordered.getFirst();
     List<Map<String, Object>> steps = new ArrayList<>();
     for (int i = 1; i < ordered.size(); i++) {
@@ -65,15 +80,28 @@ public final class YamlRouteBuilder {
           List.of(
               Map.of(
                   "filter",
-                  Map.of("expression", Map.of("simple", props.getOrDefault("expression", "true")))));
+                  Map.of(
+                      "expression",
+                      Map.of(
+                          "simple",
+                          ConfigRefs.resolvePropForEmit(props.get("expression")).isEmpty()
+                              ? "true"
+                              : ConfigRefs.resolvePropForEmit(props.get("expression"))))));
       case "log" -> List.of(Map.of("log", Map.of("message", props.getOrDefault("message", "${body}"))));
       case "transform" -> {
         String lang = props.getOrDefault("language", "simple");
-        yield List.of(Map.of("transform", Map.of(lang, props.getOrDefault("expression", "${body}"))));
+        String expr = ConfigRefs.resolvePropForEmit(props.get("expression"));
+        yield List.of(Map.of("transform", Map.of(lang, expr.isEmpty() ? "${body}" : expr)));
       }
       case "set-body" -> {
         String lang = props.getOrDefault("language", "simple");
-        yield List.of(Map.of("setBody", Map.of(lang, props.getOrDefault("expression", "${body}"))));
+        String expr = ConfigRefs.resolvePropForEmit(props.get("expression"));
+        yield List.of(Map.of("setBody", Map.of(lang, expr.isEmpty() ? "${body}" : expr)));
+      }
+      case "call-flow" -> {
+        String target = props.getOrDefault("targetRouteId", "").trim();
+        if (target.isEmpty()) yield List.of();
+        yield List.of(Map.of("to", Map.of("uri", "direct:" + target)));
       }
       case "split" -> {
         String delimiter = props.get("delimiter");
@@ -97,7 +125,6 @@ public final class YamlRouteBuilder {
     };
   }
 
-  /** Full Camel URI in {@code uri} (required for e.g. {@code log:loggerName}). */
   private static Map<String, Object> toYamlEndpoint(String blockType, Map<String, String> props) {
     Map<String, Object> ep = new LinkedHashMap<>();
     ep.put("uri", UriBuilder.buildEndpointUri(blockType, props));

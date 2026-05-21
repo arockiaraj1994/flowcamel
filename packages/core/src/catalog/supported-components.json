@@ -9,6 +9,7 @@
     "filter-action",
     "transform-action",
     "set-body-action",
+    "call-flow-action",
     "split-action",
     "log-action",
     "rest-call-action",

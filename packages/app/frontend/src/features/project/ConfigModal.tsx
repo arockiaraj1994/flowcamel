@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import type { FlowNode, BlockDefinition } from '@flowcamel/core';
+import type { FlowNode, BlockDefinition, ProjectConfig } from '@flowcamel/core';
 import { getConfigPropertiesForBlock } from '@flowcamel/core';
-import { CatalogPropertyField } from '@flowcamel/designer';
+import { PropertyRefField, type FlowTargetOption } from '@flowcamel/designer';
 
 interface Props {
   node: FlowNode;
   block: BlockDefinition;
+  projectConfig?: ProjectConfig;
+  flowTargets?: FlowTargetOption[];
   onClose: () => void;
   onSave: (patch: { label: string; subtitle: string; props: Record<string, string> }) => void;
   onDelete?: () => void;
 }
 
-export function ConfigModal({ node, block, onClose, onSave, onDelete }: Props) {
+export function ConfigModal({ node, block, projectConfig, flowTargets, onClose, onSave, onDelete }: Props) {
+  const configKeys = projectConfig?.default ?? [];
   const fields = getConfigPropertiesForBlock(block.type);
   const [vals, setVals] = useState<Record<string, string>>({
     ...node.props,
@@ -88,11 +91,28 @@ export function ConfigModal({ node, block, onClose, onSave, onDelete }: Props) {
                     {s.help}
                   </div>
                 )}
-                <CatalogPropertyField
-                  step={s}
-                  value={vals[s.key] || ''}
-                  onChange={(v) => setField(s.key, v)}
-                />
+                {block.type === 'call-flow-action' && s.key === 'targetRouteId' ? (
+                  <select
+                    className="field filled"
+                    value={vals[s.key] || ''}
+                    onChange={(e) => setField(s.key, e.target.value)}
+                  >
+                    <option value="">Select target flow…</option>
+                    {(flowTargets ?? []).map((t) => (
+                      <option key={t.routeId} value={t.routeId}>
+                        {t.name} (direct:{t.routeId})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <PropertyRefField
+                    step={s}
+                    value={vals[s.key] || ''}
+                    onChange={(v) => setField(s.key, v)}
+                    configKeys={configKeys}
+                    blockType={block.type}
+                  />
+                )}
               </div>
             ))}
           </div>

@@ -2,6 +2,7 @@
   { "type": "filter-action", "label": "Filter", "category": "ACTION", "eipId": "filter" },
   { "type": "transform-action", "label": "Transform", "category": "ACTION", "eipId": "transform" },
   { "type": "set-body-action", "label": "Set message body", "category": "ACTION", "eipId": "set-body" },
+  { "type": "call-flow-action", "label": "Call flow", "category": "ACTION", "eipId": "call-flow" },
   { "type": "split-action", "label": "Split Records", "category": "ACTION", "eipId": "split" },
   { "type": "log-action", "label": "Log / Print", "category": "ACTION", "eipId": "log" },
   { "type": "rest-call-action", "label": "REST Call", "category": "ACTION", "eipId": "to-uri" },
